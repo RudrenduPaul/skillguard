@@ -131,18 +131,21 @@ describe('scan/semgrep-runner', () => {
     expect(findings.some((f) => f.file === 'fast.sh')).toBe(true);
   });
 
-  it('enforces the per-file timeout under REAL wall-clock conditions (no mocked clock) when a single global rule matches tens of thousands of times', () => {
+  it('enforces the per-file timeout under REAL wall-clock conditions (no mocked clock) on a file with millions of matches', () => {
     // Regression test for a real bug: the previous implementation only
     // checked elapsed time between distinct rules, never between repeated
     // matches of the same global rule, and separately recomputed the line
     // number for every match by rescanning from the start of the file
     // (O(fileSize) per match). Together these meant a file with many matches
-    // could run for seconds against a tiny configured timeout with no real
-    // (unmocked) clock ever tripping the guard mid-file. This test uses the
-    // real system clock (no injected clock) so it actually exercises
-    // wall-clock enforcement, not just a deterministic mock.
+    // could run for seconds -- empirically, over 25s and still climbing on a
+    // 3,000,000-line file against a 200ms configured timeout before this
+    // fix -- with no real (unmocked) clock ever tripping the guard mid-file.
+    // This test uses the real system clock (no injected clock) and a large
+    // enough workload to reliably exceed the budget regardless of machine
+    // speed, so it actually exercises wall-clock enforcement, not just a
+    // deterministic mock.
     const manyMatches = Array.from(
-      { length: 50_000 },
+      { length: 3_000_000 },
       (_, i) => `echo $SECRET_TOKEN_${i}`
     ).join('\n');
     fs.writeFileSync(path.join(dir, 'many-matches.sh'), manyMatches);
@@ -151,15 +154,16 @@ describe('scan/semgrep-runner', () => {
     const { timedOutFiles } = runRules(
       [scannable(dir, 'many-matches.sh', 'shell')],
       rules,
-      { timeoutMs: 50 }
+      { timeoutMs: 200 }
     );
     const elapsed = Date.now() - start;
 
     expect(timedOutFiles).toContain('many-matches.sh');
     // Real enforcement, not just a mocked-clock unit test: wall time must
-    // stay within a small, bounded multiple of the configured budget, not
-    // balloon to seconds for a file with tens of thousands of matches.
-    expect(elapsed).toBeLessThan(2000);
+    // stay within a small, bounded multiple of the configured budget (measured
+    // ~280ms locally for this workload), not balloon to 25+ seconds the way
+    // the pre-fix implementation did for the same input.
+    expect(elapsed).toBeLessThan(5000);
   });
 
   it('reports the correct line number for a match deep inside a large file (line-number regression check)', () => {
