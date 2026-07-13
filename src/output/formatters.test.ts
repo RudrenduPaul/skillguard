@@ -77,4 +77,27 @@ describe('output/formatters', () => {
     const mediumResult = sarif.runs[0].results.find((r: { ruleId: string }) => r.ruleId === 'sg01-raw-socket-python');
     expect(mediumResult.level).toBe('warning'); // MEDIUM -> warning
   });
+
+  it('sarif format surfaces scan-level warnings (e.g. a skipped invalid rule pack) via toolExecutionNotifications, not silently', () => {
+    // Regression test for a real bug: formatSarif previously ignored
+    // result.warnings entirely, so a WHAT/WHY/FIX warning (invalid pack,
+    // invalid glob, target not found) never appeared anywhere in the SARIF
+    // document -- exactly the output format the bundled GitHub Action
+    // defaults to (action.yml: --format sarif).
+    const sarif = JSON.parse(formatSarif(SAMPLE_RESULT));
+    const notifications = sarif.runs[0].invocations[0].toolExecutionNotifications;
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].descriptor.id).toBe('invalid-pack');
+    expect(notifications[0].message.text).toContain('WHAT:');
+  });
+
+  it('sarif invocation reports executionSuccessful=false only for a target/config error (exit code 2)', () => {
+    const configError: ScanResult = { ...SAMPLE_RESULT, exitCode: 2 };
+    const sarifError = JSON.parse(formatSarif(configError));
+    expect(sarifError.runs[0].invocations[0].executionSuccessful).toBe(false);
+
+    const clean: ScanResult = { ...SAMPLE_RESULT, exitCode: 0, warnings: [] };
+    const sarifClean = JSON.parse(formatSarif(clean));
+    expect(sarifClean.runs[0].invocations[0].executionSuccessful).toBe(true);
+  });
 });
