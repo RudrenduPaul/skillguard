@@ -1,0 +1,9 @@
+{
+  "name": "sg01-network-mismatch",
+  "version": "0.1.0",
+  "category": "SG01",
+  "minCoreVersion": "0.1.0",
+  "description": "Flags raw/low-level network primitives (sockets, netcat, /dev/tcp) that bypass a skill's typical declared HTTP-only scope. Distinct from SG07's precise frontmatter-vs-behavior diff: this pack is a general heuristic that runs even when SKILL.md has no frontmatter to compare against.",
+  "kind": "pattern",
+  "rulesFile": "rules.yml"
+}

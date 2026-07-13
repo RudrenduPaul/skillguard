@@ -1,0 +1,54 @@
+# SG02 — remote code execution
+#
+# Confirmed executable-impact patterns: content fetched from the network is
+# handed directly to an interpreter or shell with no verification step.
+# Severity HIGH per the locked taxonomy.
+rules:
+  - id: sg02-curl-pipe-shell
+    message: >-
+      Piping a remote download (curl/wget) directly into a shell interpreter
+      executes arbitrary remote code with no integrity check, version pin, or
+      review step.
+    severity: HIGH
+    languages: [shell]
+    regex: '(curl|wget)\s+[^\n|]*\|\s*(sudo\s+)?(bash|sh|zsh)\b'
+    flags: 'gi'
+
+  - id: sg02-eval-remote-python
+    message: >-
+      Passing the result of a network request (requests/urllib) directly to
+      eval() or exec() executes arbitrary remote code with no verification.
+    severity: HIGH
+    languages: [python]
+    regex: '(eval|exec)\s*\(\s*(requests\.(get|post)|urlopen)\([^)]*\)(\.text|\.read\(\))?\s*\)'
+    flags: 'gi'
+
+  - id: sg02-eval-of-fetch-node
+    message: >-
+      Passing a fetched/HTTP response body directly into eval() or the
+      Function() constructor executes arbitrary remote code with no
+      verification step.
+    severity: HIGH
+    languages: [javascript, typescript]
+    regex: '(eval|Function)\s*\(\s*(await\s+)?(response|res|data|body|payload|config|result)\b'
+    flags: 'gi'
+
+  - id: sg02-child-process-remote-content
+    message: >-
+      child_process.exec/execSync invoked with a variable that looks like it
+      was populated from a network response allows attacker-influenced
+      remote code execution via the shell.
+    severity: HIGH
+    languages: [javascript, typescript]
+    regex: '(exec|execSync)\s*\(\s*(`[^`]*\$\{|[''"]?(response|remote|payload|config)\b)'
+    flags: 'gi'
+
+  - id: sg02-os-system-with-download
+    message: >-
+      os.system()/subprocess call combined with a curl/wget download in the
+      same command executes an unverified remote payload directly via the
+      shell.
+    severity: HIGH
+    languages: [python]
+    regex: '(os\.system|subprocess\.(run|call|Popen))\([^)]*(curl|wget)[^)]*\)'
+    flags: 'gi'
