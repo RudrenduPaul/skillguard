@@ -73,20 +73,69 @@ export function compileRules(
   return compiled;
 }
 
-function lineNumberAt(content: string, index: number): number {
-  let line = 1;
-  for (let i = 0; i < index; i++) {
-    if (content.charCodeAt(i) === 10 /* \n */) line++;
+/**
+ * Precomputes the start offset of every line in `content` once per file, so
+ * looking up the line number for a match index is a binary search (O(log n))
+ * instead of a linear rescan from the start of the file.
+ *
+ * BUGFIX: the previous implementation (`lineNumberAt`) rescanned from index 0
+ * on every single match, which is O(fileSize) per match and therefore
+ * O(fileSize x matchCount) for a file with many matches — effectively
+ * quadratic. A file with tens of thousands of matches (trivially producible,
+ * accidentally or adversarially — e.g. a large generated file that happens
+ * to repeat a credential-shaped token) measurably took several seconds of
+ * real wall-clock time against a 200ms configured --timeout in manual
+ * testing, dramatically undermining the "hard per-file timeout" security
+ * invariant.
+ */
+function buildLineStarts(content: string): number[] {
+  const lineStarts = [0];
+  for (let i = 0; i < content.length; i++) {
+    if (content.charCodeAt(i) === 10 /* \n */) lineStarts.push(i + 1);
   }
-  return line;
+  return lineStarts;
 }
+
+function lineNumberFromIndex(lineStarts: number[], index: number): number {
+  let lo = 0;
+  let hi = lineStarts.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >>> 1;
+    if (lineStarts[mid] <= index) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo + 1;
+}
+
+/**
+ * How many matches of a single global rule to process between elapsed-time
+ * checks. The [redacted]-locked per-file timeout is cooperative (a single
+ * synchronous RegExp#exec call can't be preempted from within the same JS
+ * thread), so this bounds the *number of matches* a single rule can process
+ * past the configured budget rather than the wall-clock time directly. A
+ * small interval keeps the worst-case overrun small without adding
+ * significant per-match overhead from clock() calls.
+ */
+const MATCH_TIMEOUT_CHECK_INTERVAL = 25;
 
 /**
  * Runs every applicable rule against every file, sequentially (v0.1
  * performance decision — no worker pool). Each file gets a cooperative
- * per-file timeout budget: elapsed time is checked between rules, so a file
- * whose ruleset takes longer than `timeoutMs` is marked [TIMEOUT] and
- * scanning moves on to the next file rather than dropping it silently.
+ * per-file timeout budget: elapsed time is checked between rules and
+ * periodically between repeated matches of the same rule, so a file whose
+ * ruleset (or a single rule matching many times) takes longer than
+ * `timeoutMs` is marked [TIMEOUT] and scanning moves on to the next file
+ * rather than dropping it silently or hanging indefinitely.
+ *
+ * KNOWN LIMITATION (not fixed here — escalated as needing a design decision,
+ * see the code-review report this shipped with): this is still a
+ * *cooperative* timeout, checked between matches. A single pathological
+ * regex (catastrophic backtracking / ReDoS) can still block the event loop
+ * for an unbounded time inside one synchronous `exec()` call, with no
+ * opportunity for this loop to intervene. Fully bounding that case requires
+ * running rule evaluation in a worker thread and calling
+ * `worker.terminate()` on timeout — a real architecture change, not a
+ * same-pass hotfix.
  */
 export function runRules(
   files: ScannableFile[],
@@ -108,6 +157,7 @@ export function runRules(
     const applicableRules = rules.filter((rule) => rule.languages.includes(file.language));
     const startedAt = clock();
     let timedOut = false;
+    const lineStarts = buildLineStarts(content);
 
     for (const rule of applicableRules) {
       if (clock() - startedAt > options.timeoutMs) {
@@ -119,9 +169,10 @@ export function runRules(
       let match: RegExpExecArray | null;
       // Guard against a rule authored without the global flag looping forever.
       const isGlobal = rule.compiled.global;
+      let matchesSinceCheck = 0;
       // eslint-disable-next-line no-cond-assign
       while ((match = rule.compiled.exec(content))) {
-        const line = lineNumberAt(content, match.index);
+        const line = lineNumberFromIndex(lineStarts, match.index);
         findings.push({
           ruleId: rule.id,
           category: rule.category,
@@ -132,7 +183,18 @@ export function runRules(
           snippet: match[0].slice(0, 200),
         });
         if (!isGlobal) break;
+
+        matchesSinceCheck++;
+        if (matchesSinceCheck >= MATCH_TIMEOUT_CHECK_INTERVAL) {
+          matchesSinceCheck = 0;
+          if (clock() - startedAt > options.timeoutMs) {
+            timedOut = true;
+            break;
+          }
+        }
       }
+
+      if (timedOut) break;
     }
 
     if (timedOut) {
