@@ -19,8 +19,10 @@ import { formatWhatWhyFix } from '../errors';
  *   target path
  *        |
  *        v
- *   .skillguardignore loaded  -> ignore globs (+ warnings for invalid lines)
- *        |
+ *   .skillguardignore loaded  -> ignore globs (+ warnings for invalid lines).
+ *        |                       Only loaded when the caller explicitly
+ *        |                       supplies a path -- never auto-derived from
+ *        |                       inside the (untrusted) scan target.
  *        v
  *   walker.ts                 -> SKILL.md path, scannable files, unscanned files
  *        |
@@ -35,7 +37,8 @@ import { formatWhatWhyFix } from '../errors';
  *    |                                 |
  *    +-----------------+---------------+
  *                       v
- *              inline suppression filter (# skillguard-ignore: SGxx)
+ *              inline suppression filter (# skillguard-ignore: SGxx),
+ *              off by default -- opt in via allowInlineSuppression
  *                       v
  *              severity threshold -> exit code (0 clean / 1 fail / 2 error)
  */
@@ -78,8 +81,19 @@ export async function scanSkill(target: string, options: ScanOptions = {}): Prom
     };
   }
 
-  const ignoreFilePath = options.ignoreFilePath ?? path.join(absTarget, '.skillguardignore');
-  const ignoreResult = loadIgnoreFile(ignoreFilePath);
+  // SECURITY: .skillguardignore is only loaded when the caller explicitly
+  // supplies a path (CLI --skillguardignore flag, or the ignoreFilePath
+  // library option) -- never auto-derived from inside the scan target. The
+  // target directory is untrusted third-party content SkillGuard exists to
+  // vet; auto-loading a suppression file that ships inside that exact
+  // content would let a malicious skill silence every finding about
+  // itself with a single line (verified: a bundled fixture with its own
+  // `hooks/**` .skillguardignore line flipped a 5-HIGH-finding scan to a
+  // clean exit-0 PASS), which is precisely the "false clean scan" failure
+  // mode a security-gate tool cannot have.
+  const ignoreResult = options.ignoreFilePath
+    ? loadIgnoreFile(options.ignoreFilePath)
+    : { patterns: [], warnings: [] };
 
   const { skillMdPath, files, unscannedFiles } = walk(absTarget, ignoreResult.patterns);
 
@@ -152,22 +166,29 @@ export async function scanSkill(target: string, options: ScanOptions = {}): Prom
 
   const allFindings = [...patternFindings, ...structuralFindings];
 
-  // Inline suppression: "# skillguard-ignore: SGxx" on the finding's own line
-  // or the line directly above it.
+  // Inline suppression: "# skillguard-ignore: SGxx" on the finding's own
+  // line or the line directly above it. SECURITY: off by default (see
+  // ScanOptions.allowInlineSuppression) -- these comments live inside the
+  // exact untrusted scan-target content being vetted, so by default
+  // nothing in that content can silence a finding about itself. Opt in
+  // only when the caller already trusts the content (e.g. an author
+  // self-scanning their own skill pre-publish).
   const fileContentCache = new Map<string, string>();
-  const suppressedFindings = allFindings.filter((finding) => {
-    const absPath = path.join(absTarget, finding.file);
-    let content = fileContentCache.get(absPath);
-    if (content === undefined) {
-      try {
-        content = fs.readFileSync(absPath, 'utf8');
-      } catch {
-        content = '';
-      }
-      fileContentCache.set(absPath, content);
-    }
-    return !isInlineSuppressed(content, finding.line, finding.category);
-  });
+  const suppressedFindings = options.allowInlineSuppression
+    ? allFindings.filter((finding) => {
+        const absPath = path.join(absTarget, finding.file);
+        let content = fileContentCache.get(absPath);
+        if (content === undefined) {
+          try {
+            content = fs.readFileSync(absPath, 'utf8');
+          } catch {
+            content = '';
+          }
+          fileContentCache.set(absPath, content);
+        }
+        return !isInlineSuppressed(content, finding.line, finding.category);
+      })
+    : allFindings;
 
   const exitCode = suppressedFindings.some((f) => meetsThreshold(f.severity, severityThreshold))
     ? 1

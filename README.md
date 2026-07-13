@@ -49,7 +49,8 @@ npx skillguard-cli scan <path> [options]
 | `--format <human\|json\|sarif>` | `human` | Output format. |
 | `--severity-threshold <HIGH\|MEDIUM\|LOW>` | `HIGH` | Minimum severity that fails the scan (exit code 1). |
 | `--timeout <ms>` | `10000` | Per-file scan timeout in milliseconds. |
-| `--skillguardignore <path>` | `<path>/.skillguardignore` | Path to a suppression file. |
+| `--skillguardignore <path>` | none (must be passed explicitly) | Path to a suppression file. Never auto-loaded from inside the scan target — see [Suppressing findings](#suppressing-findings). |
+| `--allow-inline-suppression` | `false` | Honor inline `# skillguard-ignore: SGxx` comments found inside the scanned files. Off by default — see below. |
 
 **Exit codes**: `0` — clean scan, `1` — a finding at or above the severity
 threshold, `2` — the target path doesn't exist or no skill files were found.
@@ -106,8 +107,13 @@ coverage, not a complete answer to obfuscation.
 
 ## Suppressing findings
 
-A `.skillguardignore` file in the scan target suppresses whole files by glob,
-same mental model as `.gitignore`:
+**Trust model:** SkillGuard's job is to vet directories you did *not* write.
+Both suppression mechanisms below can silence a finding, so neither is ever
+trusted automatically from inside the thing being scanned — each requires an
+explicit, deliberate opt-in from whoever runs the scan.
+
+A `.skillguardignore` file suppresses whole files by glob, same mental model
+as `.gitignore`:
 
 ```
 # .skillguardignore
@@ -115,8 +121,25 @@ vendor/**
 *.generated.js
 ```
 
+It is **only honored when you pass `--skillguardignore <path>`** (or the
+`ignoreFilePath` library option) — SkillGuard never reads a
+`.skillguardignore` living inside the scan target on its own. A malicious
+skill submission that ships its own `.skillguardignore` cannot silence
+findings about itself unless you explicitly point SkillGuard at that file.
+If you maintain a skill yourself and want self-suppression, keep your
+`.skillguardignore` and pass its path explicitly:
+
+```bash
+npx skillguard-cli scan ./my-skill --skillguardignore ./my-skill/.skillguardignore
+```
+
 An inline `# skillguard-ignore: SG02` comment (on the same line as the match,
-or the line directly above it) suppresses a single finding in place.
+or the line directly above it) suppresses a single finding in place. This is
+**off by default** and requires `--allow-inline-suppression` — for the same
+reason: the comment lives inside the exact untrusted content being vetted,
+so by default nothing in a scan target can silence a finding about itself.
+Only enable it for a target you already trust, e.g. self-scanning your own
+skill before publishing.
 
 ## Development
 

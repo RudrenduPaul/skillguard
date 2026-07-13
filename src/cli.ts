@@ -76,7 +76,12 @@ export async function runCli(argv: string[]): Promise<number> {
       'HIGH'
     )
     .option('-t, --timeout <ms>', 'per-file scan timeout in milliseconds', '10000')
-    .option('--skillguardignore <path>', 'path to a .skillguardignore file')
+    .option('--skillguardignore <path>', 'path to a .skillguardignore file (must be explicit -- never auto-loaded from inside the scan target, for security)')
+    .option(
+      '--allow-inline-suppression',
+      'honor "# skillguard-ignore: SGxx" comments found inside the scanned files themselves. Off by default -- only enable this for a target you already trust, e.g. self-scanning your own skill before publishing.',
+      false
+    )
     .action(async (targetPath: string, opts) => {
       const format = parseFormat(opts.format);
       const severityThreshold = parseSeverity(opts.severityThreshold);
@@ -93,6 +98,7 @@ export async function runCli(argv: string[]): Promise<number> {
         severityThreshold,
         timeoutMs,
         ignoreFilePath: opts.skillguardignore,
+        allowInlineSuppression: Boolean(opts.allowInlineSuppression),
       });
 
       process.stdout.write(formatResult(result, format) + '\n');

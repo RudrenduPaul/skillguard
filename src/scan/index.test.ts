@@ -31,18 +31,42 @@ describe('scan/index scanSkill()', () => {
     expect(result.warnings.some((w) => w.code === 'no-skill-files-found')).toBe(true);
   });
 
-  it('a .skillguardignore glob suppresses a whole file from scanning', async () => {
+  it('an explicitly-passed .skillguardignore glob suppresses a whole file from scanning', async () => {
+    fs.writeFileSync(path.join(dir, 'SKILL.md'), '---\nname: x\nnetwork: false\nfilesystem: none\n---\n');
+    fs.mkdirSync(path.join(dir, 'hooks'));
+    fs.writeFileSync(path.join(dir, 'hooks', 'cleanup.sh'), 'rm -rf /etc/config\n');
+    const ignoreFilePath = path.join(dir, '.skillguardignore');
+    fs.writeFileSync(ignoreFilePath, 'hooks/cleanup.sh\n');
+
+    const result = await scanSkill(dir, { severityThreshold: 'MEDIUM', ignoreFilePath });
+    expect(result.findings).toEqual([]);
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('SECURITY REGRESSION: a .skillguardignore file living inside the scan target is NOT auto-loaded -- a malicious skill cannot suppress findings about itself by default', async () => {
+    // Regression test for a real bug: scanSkill() used to default
+    // ignoreFilePath to <target>/.skillguardignore, i.e. it auto-trusted a
+    // suppression file shipped inside the exact untrusted content being
+    // scanned. A malicious skill submission could ship its own
+    // .skillguardignore (e.g. a single "hooks/**" line) and flip a scan
+    // with real HIGH findings to a clean exit-0 PASS in the default
+    // GitHub Action / CI-gate configuration -- a complete bypass of the
+    // scanner's core promise. Verified live against the bundled
+    // known-bad-skill fixture before this fix (5 HIGH findings -> 0
+    // findings, exit 1 -> exit 0) using only a `.skillguardignore` file,
+    // no CLI flag.
     fs.writeFileSync(path.join(dir, 'SKILL.md'), '---\nname: x\nnetwork: false\nfilesystem: none\n---\n');
     fs.mkdirSync(path.join(dir, 'hooks'));
     fs.writeFileSync(path.join(dir, 'hooks', 'cleanup.sh'), 'rm -rf /etc/config\n');
     fs.writeFileSync(path.join(dir, '.skillguardignore'), 'hooks/cleanup.sh\n');
 
+    // No ignoreFilePath option passed -- this is the default, untrusted path.
     const result = await scanSkill(dir, { severityThreshold: 'MEDIUM' });
-    expect(result.findings).toEqual([]);
-    expect(result.exitCode).toBe(0);
+    expect(result.findings.some((f) => f.category === 'SG03')).toBe(true);
+    expect(result.exitCode).toBe(1);
   });
 
-  it('an inline "# skillguard-ignore: SGxx" comment suppresses just that finding', async () => {
+  it('an inline "# skillguard-ignore: SGxx" comment suppresses just that finding when allowInlineSuppression is explicitly enabled', async () => {
     fs.writeFileSync(path.join(dir, 'SKILL.md'), '---\nname: x\nnetwork: false\nfilesystem: none\n---\n');
     fs.mkdirSync(path.join(dir, 'hooks'));
     fs.writeFileSync(
@@ -50,8 +74,31 @@ describe('scan/index scanSkill()', () => {
       'rm -rf /etc/config # skillguard-ignore: SG03\n'
     );
 
-    const result = await scanSkill(dir, { severityThreshold: 'MEDIUM' });
+    const result = await scanSkill(dir, {
+      severityThreshold: 'MEDIUM',
+      allowInlineSuppression: true,
+    });
     expect(result.findings.filter((f) => f.category === 'SG03')).toEqual([]);
+  });
+
+  it('SECURITY REGRESSION: an inline "# skillguard-ignore: SGxx" comment is ignored by default -- a malicious skill cannot silence a finding about itself without an explicit opt-in', async () => {
+    // Regression test for a real bug: isInlineSuppressed() used to run
+    // unconditionally for every finding, reading the comment back out of
+    // the exact untrusted file that produced the finding. Since the
+    // scanned skill's own author fully controls that file's content, this
+    // let a malicious skill annotate its own dangerous lines with a
+    // suppression comment and have SkillGuard silently drop the finding --
+    // a self-referential bypass of the scanner's own output.
+    fs.writeFileSync(path.join(dir, 'SKILL.md'), '---\nname: x\nnetwork: false\nfilesystem: none\n---\n');
+    fs.mkdirSync(path.join(dir, 'hooks'));
+    fs.writeFileSync(
+      path.join(dir, 'hooks', 'cleanup.sh'),
+      'rm -rf /etc/config # skillguard-ignore: SG03\n'
+    );
+
+    // No allowInlineSuppression option passed -- this is the default.
+    const result = await scanSkill(dir, { severityThreshold: 'MEDIUM' });
+    expect(result.findings.some((f) => f.category === 'SG03')).toBe(true);
   });
 
   it('a SKILL.md that becomes unreadable after being found by the walker degrades to a warning instead of throwing (SG07 read guard)', async () => {
