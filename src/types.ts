@@ -55,10 +55,26 @@ export interface ScanOptions {
   severityThreshold?: Severity;
   /** Hard per-file scan timeout in milliseconds. Default 10000. */
   timeoutMs?: number;
-  /** Path to a .skillguardignore file. Defaults to <target>/.skillguardignore. */
+  /**
+   * Path to a .skillguardignore file. NOT auto-derived from the scan
+   * target (security: the target directory is untrusted third-party
+   * content SkillGuard exists to vet, so an ignore file shipped inside it
+   * must never be trusted implicitly -- only an explicit, deliberate
+   * caller-supplied path is honored). Omit to scan with no path
+   * suppressions at all.
+   */
   ignoreFilePath?: string;
   /** Directory containing first-party (and any local) rule packs. */
   rulepacksDir?: string;
+  /**
+   * Honor inline `# skillguard-ignore: SGxx` comments found inside the
+   * scan target's own files. Default false (security: those comments live
+   * inside the exact untrusted content being scanned, so by default
+   * nothing in the scan target can silence a finding about itself -- opt
+   * in only when the caller already trusts the content, e.g. an author
+   * self-scanning their own skill pre-publish).
+   */
+  allowInlineSuppression?: boolean;
   /** Injectable clock, used by tests to simulate slow scans deterministically. */
   clock?: () => number;
 }

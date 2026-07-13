@@ -18,9 +18,13 @@ inputs:
     required: false
     default: '10000'
   skillguardignore:
-    description: 'Path to a .skillguardignore file, if not <path>/.skillguardignore.'
+    description: 'Path to a .skillguardignore file. Never auto-loaded from inside the scanned path -- leave unset to scan with no path suppressions.'
     required: false
     default: ''
+  allow-inline-suppression:
+    description: 'Honor inline "# skillguard-ignore: SGxx" comments found inside the scanned files. Off by default -- only enable for a path you already trust.'
+    required: false
+    default: 'false'
   sarif-output:
     description: 'Path to write the SARIF report to, for github/codeql-action/upload-sarif.'
     required: false
@@ -46,11 +50,16 @@ runs:
         if [ -n "${{ inputs.skillguardignore }}" ]; then
           IGNORE_FLAG="--skillguardignore ${{ inputs.skillguardignore }}"
         fi
+        SUPPRESS_FLAG=""
+        if [ "${{ inputs.allow-inline-suppression }}" = "true" ]; then
+          SUPPRESS_FLAG="--allow-inline-suppression"
+        fi
         npx --yes skillguard-cli scan "${{ inputs.path }}" \
           --format sarif \
           --severity-threshold "${{ inputs.severity-threshold }}" \
           --timeout "${{ inputs.timeout }}" \
           $IGNORE_FLAG \
+          $SUPPRESS_FLAG \
           > "${{ inputs.sarif-output }}"
         echo "exit-code=$?" >> "$GITHUB_OUTPUT"
         echo "sarif-file=${{ inputs.sarif-output }}" >> "$GITHUB_OUTPUT"
