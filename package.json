@@ -1,0 +1,66 @@
+{
+  "name": "skillguard-cli",
+  "version": "0.1.0",
+  "description": "Security scanner for third-party AI agent-skill files: SKILL.md manifests, hooks, and bundled scripts.",
+  "keywords": [
+    "security",
+    "static-analysis",
+    "cli",
+    "agent-skills",
+    "sarif",
+    "ci"
+  ],
+  "license": "Apache-2.0",
+  "author": "Rudrendu Paul",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RudrenduPaul/skillguard.git"
+  },
+  "homepage": "https://github.com/RudrenduPaul/skillguard#readme",
+  "bugs": {
+    "url": "https://github.com/RudrenduPaul/skillguard/issues"
+  },
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "skillguard-cli": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "rulepacks",
+    "examples",
+    "action.yml",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "commander": "12.1.0",
+    "minimatch": "9.0.9",
+    "yaml": "2.9.0",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.15",
+    "typescript": "5.5.4",
+    "vitest": "2.1.9"
+  }
+}
