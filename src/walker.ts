@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { minimatch } from 'minimatch';
+import { MINIMATCH_OPTIONS } from './suppress/skillguardignore';
 
 /**
  * File discovery: finds SKILL.md plus hooks/scripts under a target path, then
@@ -104,7 +105,7 @@ export function walk(targetDir: string, ignoreGlobs: string[] = []): WalkResult 
   for (const absPath of allFiles) {
     const relPath = path.relative(absTarget, absPath).split(path.sep).join('/');
 
-    if (ignoreGlobs.some((glob) => minimatch(relPath, glob, { dot: true }))) {
+    if (ignoreGlobs.some((glob) => minimatch(relPath, glob, MINIMATCH_OPTIONS))) {
       continue;
     }
 
@@ -129,7 +130,7 @@ export function walk(targetDir: string, ignoreGlobs: string[] = []): WalkResult 
   // evasion vector wherever it appears, not just inside hooks/scripts.
   for (const absPath of symlinks) {
     const relPath = path.relative(absTarget, absPath).split(path.sep).join('/');
-    if (ignoreGlobs.some((glob) => minimatch(relPath, glob, { dot: true }))) {
+    if (ignoreGlobs.some((glob) => minimatch(relPath, glob, MINIMATCH_OPTIONS))) {
       continue;
     }
     unscannedFiles.push(relPath);
