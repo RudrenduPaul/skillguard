@@ -46,7 +46,7 @@ export interface WalkResult {
   unscannedFiles: string[];
 }
 
-function collectAllFiles(root: string, dir: string, out: string[]): void {
+function collectAllFiles(root: string, dir: string, out: string[], symlinks: string[]): void {
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -54,9 +54,27 @@ function collectAllFiles(root: string, dir: string, out: string[]): void {
     return;
   }
   for (const entry of entries) {
+    // BUGFIX (security completeness gap): fs.Dirent#isDirectory() and
+    // #isFile() both check the dirent's OWN type without following a
+    // symlink -- for a symlink entry, both return false. The previous
+    // version of this loop had no symlink branch, so a symlink anywhere
+    // under the scan target (e.g. hooks/setup.sh -> /elsewhere/payload.sh)
+    // was silently invisible: not scanned, not even reported in
+    // unscannedFiles, contradicting this walker's own documented "never
+    // silently dropped" principle and giving a trivial scanner-evasion
+    // vector for a tool whose entire job is scanning untrusted third-party
+    // content. This deliberately does NOT resolve/follow the symlink (doing
+    // so safely requires deciding a real security policy -- containment
+    // within the target tree, cycle detection -- flagged separately as
+    // needing a design decision, not guessed at here). It only makes the
+    // symlink's existence visible instead of invisible.
+    if (entry.isSymbolicLink()) {
+      symlinks.push(path.join(dir, entry.name));
+      continue;
+    }
     if (entry.isDirectory()) {
       if (ALWAYS_IGNORED_DIRS.has(entry.name)) continue;
-      collectAllFiles(root, path.join(dir, entry.name), out);
+      collectAllFiles(root, path.join(dir, entry.name), out, symlinks);
     } else if (entry.isFile()) {
       out.push(path.join(dir, entry.name));
     }
@@ -76,7 +94,8 @@ function isUnderScriptRoleDir(relPath: string): boolean {
 export function walk(targetDir: string, ignoreGlobs: string[] = []): WalkResult {
   const absTarget = path.resolve(targetDir);
   const allFiles: string[] = [];
-  collectAllFiles(absTarget, absTarget, allFiles);
+  const symlinks: string[] = [];
+  collectAllFiles(absTarget, absTarget, allFiles, symlinks);
 
   let skillMdPath: string | null = null;
   const files: ScannableFile[] = [];
@@ -102,6 +121,18 @@ export function walk(targetDir: string, ignoreGlobs: string[] = []): WalkResult 
     } else if (isUnderScriptRoleDir(relPath)) {
       unscannedFiles.push(relPath);
     }
+  }
+
+  // Symlinks are never followed (see collectAllFiles) but are always
+  // reported as unscanned rather than silently vanishing, regardless of
+  // which directory they're in -- a symlink is a security-relevant
+  // evasion vector wherever it appears, not just inside hooks/scripts.
+  for (const absPath of symlinks) {
+    const relPath = path.relative(absTarget, absPath).split(path.sep).join('/');
+    if (ignoreGlobs.some((glob) => minimatch(relPath, glob, { dot: true }))) {
+      continue;
+    }
+    unscannedFiles.push(relPath);
   }
 
   return { skillMdPath, files, unscannedFiles };
