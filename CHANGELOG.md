@@ -41,6 +41,53 @@ Initial release.
 - `examples/known-bad-skill` and `examples/clean-skill` fixtures for the
   README demo command and end-to-end tests.
 
+### Security ([redacted ] pass, before v0.1 ships)
+
+- **Fixed: suppression trust boundary.** `.skillguardignore` was previously
+  auto-loaded from `<target>/.skillguardignore` by default, and inline
+  `# skillguard-ignore: SGxx` comments were always honored — both read from
+  inside the exact untrusted directory SkillGuard exists to vet. A malicious
+  skill submission could ship its own `.skillguardignore` (a single line was
+  enough) or annotate its own malicious lines with a suppression comment and
+  flip a scan with real HIGH findings to a clean exit-0 PASS, in the default
+  GitHub Action configuration — a complete bypass of the scanner's core
+  promise, verified live against the bundled `known-bad-skill` fixture.
+  **Fix:** `.skillguardignore` is now only loaded when explicitly passed
+  (`--skillguardignore <path>` / `ignoreFilePath` option); inline suppression
+  now requires an explicit `--allow-inline-suppression` flag /
+  `allowInlineSuppression` option, off by default. Both remain fully
+  supported for the legitimate self-scan use case (an author suppressing
+  known false positives in their own skill pre-publish) — they just require
+  a deliberate opt-in instead of being auto-trusted from untrusted content.
+- **Fixed: unbounded ReDoS via `.skillguardignore` glob patterns.**
+  minimatch's brace-expansion (`{a,b}`) and extglob (`@(...)` etc.) syntax
+  can compile to a catastrophically backtracking regex — confirmed locally:
+  `{a,a}` repeated ~22 times (about 110 bytes) took 3.5+ seconds just to
+  *compile*, growing exponentially with each repetition, with zero timeout
+  protection anywhere in the suppression-matching code path (the existing
+  per-file timeout only covers rule-pattern matching, not path suppression).
+  Since `.skillguardignore` is read from the scan target, this was a
+  directly attacker-controlled, unbounded hang, worse than the documented
+  single-pattern ReDoS residual risk below. **Fix:** suppression-glob
+  matching now runs with brace expansion and extglob syntax disabled
+  (`nobrace`/`noext`), plus a 512-character cap on individual suppression
+  lines as defense in depth. Neither feature is meaningful for a
+  `.gitignore`-style suppression file, so this is not a capability loss.
+- **Fixed: terminal/ANSI-escape injection in the human-readable CLI output.**
+  A finding's `file` path and `snippet` (a raw slice of matched file
+  content) both originate in the scan target and were printed verbatim to
+  `formatHuman()`'s terminal-facing output. A crafted filename or source
+  line containing raw ESC/ANSI escape sequences, or embedded CR/LF bytes,
+  could conceal or rewrite what a human sees when running
+  `skillguard-cli scan` locally -- hiding the incriminating part of a
+  flagged line, overwriting a display line via a bare CR, or forging a fake
+  extra report line via an embedded LF. **Fix:** `file`, `snippet`, and
+  suppression/warning text derived from the scan target are now stripped of
+  ASCII control characters before being printed in human format. This does
+  not affect the JSON/SARIF machine-readable formats or the exit code --
+  the automated CI-gate decision was never affected by this gap, only a
+  human directly reading terminal output.
+
 ### Known Limitations (tracked for v0.2)
 
 - **Single-pattern ReDoS residual risk.** The per-file timeout (default
