@@ -5,7 +5,7 @@ import type { Finding, ScanResult, Severity } from '../types';
  * Three output formats:
  *  - human  (default for the bare CLI)
  *  - json   (schema-validated shape, see JsonOutputSchema below)
- *  - sarif  (valid SARIF 2.1.0 for GitHub code-scanning upload — the default
+ *  - sarif  (valid SARIF 2.1.0 for GitHub code-scanning upload -- the default
  *            the bundled GitHub Action invokes the CLI with, see action.yml)
  */
 
@@ -47,6 +47,29 @@ function summarize(findings: Finding[]): Record<Severity, number> {
   return summary;
 }
 
+/**
+ * SECURITY: strips ASCII control characters (the full C0 range 0x00-0x1F,
+ * including ESC 0x1B, CR, and LF, plus DEL 0x7F -- everything except tab)
+ * from strings that originate in the scan target before they reach
+ * formatHuman()'s terminal-facing output. A finding's file path (a real
+ * filesystem path under the scan target) and snippet (a raw slice of
+ * matched file content) are both attacker-controlled: a crafted filename or
+ * source line containing ANSI/terminal escape sequences, or embedded
+ * CR/LF bytes, printed verbatim can conceal or rewrite what a human sees
+ * when running skillguard-cli scan locally -- e.g. hiding the
+ * incriminating part of a flagged line, overwriting a display line via a
+ * bare CR, or forging fake extra report lines via an embedded LF. This is a
+ * classic terminal/log-injection class of bug for any tool that prints
+ * untrusted content to a terminal. It does not affect the JSON/SARIF
+ * machine-readable formats or the exit code (the automated CI-gate decision
+ * is unaffected either way); it only protects a human directly reading the
+ * default human-readable CLI output.
+ */
+function sanitizeForTerminal(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  return value.replace(/[\x00-\x08\x0a-\x1f\x7f]/g, '\uFFFD');
+}
+
 export function toJsonOutput(result: ScanResult): JsonOutput {
   return {
     target: result.target,
@@ -80,22 +103,23 @@ export function formatHuman(result: ScanResult): string {
     );
     lines.push('');
     for (const finding of result.findings) {
-      lines.push(`[${finding.severity}] ${finding.category} ${finding.file}:${finding.line}`);
+      const file = sanitizeForTerminal(finding.file);
+      lines.push(`[${finding.severity}] ${finding.category} ${file}:${finding.line}`);
       lines.push(`  ${finding.ruleId} — ${finding.message}`);
-      if (finding.snippet) lines.push(`  > ${finding.snippet}`);
+      if (finding.snippet) lines.push(`  > ${sanitizeForTerminal(finding.snippet)}`);
       lines.push('');
     }
   }
 
   if (result.timeouts.length > 0) {
     lines.push(`[TIMEOUT] files that exceeded the per-file scan timeout (scan continued):`);
-    for (const file of result.timeouts) lines.push(`  - ${file}`);
+    for (const file of result.timeouts) lines.push(`  - ${sanitizeForTerminal(file)}`);
     lines.push('');
   }
 
   if (result.unscannedFiles.length > 0) {
     lines.push('Unscanned files (unsupported language, not silently skipped):');
-    for (const file of result.unscannedFiles) lines.push(`  - ${file}`);
+    for (const file of result.unscannedFiles) lines.push(`  - ${sanitizeForTerminal(file)}`);
     lines.push('');
   }
 
@@ -103,7 +127,7 @@ export function formatHuman(result: ScanResult): string {
     lines.push('Warnings:');
     for (const warning of result.warnings) {
       lines.push(
-        warning.message
+        sanitizeForTerminal(warning.message)
           .split('\n')
           .map((l) => `  ${l}`)
           .join('\n')
@@ -137,16 +161,16 @@ export function formatSarif(result: ScanResult): string {
     };
   });
 
-  // BUGFIX: SARIF's `results` array only ever carries findings (matches
+  // BUGFIX: SARIF's results array only ever carries findings (matches
   // against a rule + a file location) -- there is no field on a result for
   // a scan-level diagnostic like "target path not found" or "skipped an
-  // invalid rule pack." Those surface via `result.warnings` (already
+  // invalid rule pack." Those surface via result.warnings (already
   // WHAT/WHY/FIX formatted), but formatSarif previously dropped that array
   // entirely: a CI engineer running the GitHub Action (which defaults to
   // --format sarif per the locked [redacted]) got a validly-shaped but
   // silently incomplete SARIF file on every scan-level error or warning --
   // exactly the format the Action always uses. SARIF 2.1.0's
-  // `invocations[].toolExecutionNotifications` is the spec-correct place
+  // invocations[].toolExecutionNotifications is the spec-correct place
   // for tool diagnostics that are not analysis results, so warnings are
   // surfaced there instead of being dropped.
   const invocation = {
