@@ -1,0 +1,70 @@
+name: 'SkillGuard'
+description: 'Scan a third-party AI agent-skill directory (SKILL.md, hooks, scripts) for known attack patterns and gate your CI on the result.'
+author: 'Rudrendu Paul'
+branding:
+  icon: 'shield'
+  color: 'red'
+
+inputs:
+  path:
+    description: 'Path to the skill directory to scan.'
+    required: true
+  severity-threshold:
+    description: 'Minimum severity that fails the check: HIGH, MEDIUM, or LOW.'
+    required: false
+    default: 'HIGH'
+  timeout:
+    description: 'Per-file scan timeout in milliseconds.'
+    required: false
+    default: '10000'
+  skillguardignore:
+    description: 'Path to a .skillguardignore file, if not <path>/.skillguardignore.'
+    required: false
+    default: ''
+  sarif-output:
+    description: 'Path to write the SARIF report to, for github/codeql-action/upload-sarif.'
+    required: false
+    default: 'skillguard-results.sarif'
+
+outputs:
+  sarif-file:
+    description: 'Path to the generated SARIF report.'
+    value: ${{ steps.scan.outputs.sarif-file }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Scans and writes SARIF, but always exits 0 here -- the gate decision
+    # happens in the final step, after the SARIF upload runs, so a failing
+    # scan still shows up in GitHub code scanning instead of being lost.
+    - name: Run SkillGuard (SARIF output, default per the [redacted])
+      id: scan
+      shell: bash
+      run: |
+        set -o pipefail
+        IGNORE_FLAG=""
+        if [ -n "${{ inputs.skillguardignore }}" ]; then
+          IGNORE_FLAG="--skillguardignore ${{ inputs.skillguardignore }}"
+        fi
+        npx --yes skillguard-cli scan "${{ inputs.path }}" \
+          --format sarif \
+          --severity-threshold "${{ inputs.severity-threshold }}" \
+          --timeout "${{ inputs.timeout }}" \
+          $IGNORE_FLAG \
+          > "${{ inputs.sarif-output }}"
+        echo "exit-code=$?" >> "$GITHUB_OUTPUT"
+        echo "sarif-file=${{ inputs.sarif-output }}" >> "$GITHUB_OUTPUT"
+
+    - name: Upload SARIF to GitHub code scanning
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.scan.outputs.sarif-file }}
+
+    - name: Gate on SkillGuard result
+      shell: bash
+      run: |
+        CODE="${{ steps.scan.outputs.exit-code }}"
+        if [ "$CODE" != "0" ]; then
+          echo "SkillGuard found findings at or above the configured severity threshold (exit code $CODE). See the Security tab for details."
+          exit "$CODE"
+        fi
