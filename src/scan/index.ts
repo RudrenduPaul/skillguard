@@ -116,15 +116,37 @@ export async function scanSkill(target: string, options: ScanOptions = {}): Prom
   });
 
   const structuralFindings = [];
+  const structuralWarnings: typeof packWarnings = [];
   const hasStructuralSg07 = packs.some(
     (p) => p.manifest.category === 'SG07' && p.manifest.kind === 'structural'
   );
   if (hasStructuralSg07 && skillMdPath) {
-    const skillMdContent = fs.readFileSync(skillMdPath, 'utf8');
-    const declared = parseFrontmatter(skillMdContent);
-    if (declared) {
-      const actual = inferActualBehavior(files);
-      structuralFindings.push(...diffFrontmatterBehavior(declared, actual));
+    // BUGFIX: this read was previously unguarded, unlike every other file
+    // read in this module (walker, suppression cache). SKILL.md existing at
+    // walk() time doesn't guarantee it's still readable a moment later
+    // (permissions change, the file is removed, a race with the scan
+    // target being edited concurrently) -- an unguarded throw here would
+    // reject scanSkill()'s promise entirely, breaking the documented
+    // library contract (a structured ScanResult, not a thrown exception)
+    // for programmatic/agent-native callers. The CLI happened to survive it
+    // via its own top-level catch-all, which masked this in manual CLI
+    // testing.
+    try {
+      const skillMdContent = fs.readFileSync(skillMdPath, 'utf8');
+      const declared = parseFrontmatter(skillMdContent);
+      if (declared) {
+        const actual = inferActualBehavior(files);
+        structuralFindings.push(...diffFrontmatterBehavior(declared, actual));
+      }
+    } catch (err) {
+      structuralWarnings.push({
+        code: 'skill-md-unreadable',
+        message: formatWhatWhyFix(
+          `Could not read "${skillMdPath}" for the SG07 frontmatter/behavior check.`,
+          `${(err as Error).message}`,
+          'SG07 was skipped for this scan; the rest of the scan still ran. Check the file exists and is readable.'
+        ),
+      });
     }
   }
 
@@ -158,7 +180,7 @@ export async function scanSkill(target: string, options: ScanOptions = {}): Prom
     unscannedFiles,
     filesScanned: files.length,
     severityThreshold,
-    warnings: [...ignoreResult.warnings, ...packWarnings],
+    warnings: [...ignoreResult.warnings, ...packWarnings, ...structuralWarnings],
     exitCode,
   };
 }

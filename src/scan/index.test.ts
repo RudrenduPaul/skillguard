@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -52,5 +52,41 @@ describe('scan/index scanSkill()', () => {
 
     const result = await scanSkill(dir, { severityThreshold: 'MEDIUM' });
     expect(result.findings.filter((f) => f.category === 'SG03')).toEqual([]);
+  });
+
+  it('a SKILL.md that becomes unreadable after being found by the walker degrades to a warning instead of throwing (SG07 read guard)', async () => {
+    // Regression test for a real bug: the SG07 structural check's read of
+    // skillMdPath was the only unguarded fs.readFileSync call in this
+    // module (every other read -- walker, suppression cache -- is wrapped
+    // in try/catch). An unguarded throw here would reject scanSkill()'s
+    // returned promise entirely, breaking the documented library contract
+    // (a structured ScanResult, not a thrown exception) for
+    // programmatic/agent-native callers -- even though the CLI's own
+    // top-level catch-all happened to mask this in manual testing.
+    fs.writeFileSync(
+      path.join(dir, 'SKILL.md'),
+      '---\nname: x\nnetwork: false\nfilesystem: none\n---\n'
+    );
+    fs.mkdirSync(path.join(dir, 'hooks'));
+    fs.writeFileSync(path.join(dir, 'hooks', 'greet.js'), "console.log('hi');\n");
+
+    const skillMdPath = path.join(dir, 'SKILL.md');
+    // process.getuid is undefined on Windows; this suite only runs on POSIX
+    // (macOS locally, ubuntu-latest in CI per .github/workflows/ci.yml), and
+    // root can bypass a file's own permission bits, so skip rather than
+    // false-fail under an unusual runtime.
+    const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+    if (isRoot) return;
+
+    fs.chmodSync(skillMdPath, 0o000);
+    try {
+      const result = await scanSkill(dir);
+      expect(result.warnings.some((w) => w.code === 'skill-md-unreadable')).toBe(true);
+      expect(result.warnings.find((w) => w.code === 'skill-md-unreadable')?.message).toContain(
+        'WHAT:'
+      );
+    } finally {
+      fs.chmodSync(skillMdPath, 0o644);
+    }
   });
 });
