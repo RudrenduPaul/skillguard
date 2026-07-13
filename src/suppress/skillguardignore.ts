@@ -16,6 +16,39 @@ export interface IgnoreFileResult {
 }
 
 /**
+ * Hard cap on a single suppression line's length, enforced *before* the
+ * pattern ever reaches minimatch. Belt-and-suspenders defense in depth so a
+ * future minimatch option change can't silently reopen the ReDoS class this
+ * module is written to avoid (see MINIMATCH_OPTIONS below). .skillguardignore
+ * lines are hand-authored glob paths -- nothing legitimate needs anywhere
+ * close to this length.
+ */
+const MAX_PATTERN_LENGTH = 512;
+
+/**
+ * SECURITY (verified via local reproduction, not theoretical): minimatch's
+ * brace-expansion (`{a,b}`) and extglob (`@(...)`, `+(...)`, etc.) syntax
+ * can compile to a regular expression with catastrophic backtracking on
+ * ordinary input. Confirmed locally: the pattern `{a,a}` repeated 22 times
+ * (a ~110-byte string) took 3.5+ seconds just to *compile* via
+ * minimatch.makeRe() -- before it is even matched against a file path --
+ * and the cost grows exponentially with each additional repetition, with
+ * zero timeout protection anywhere in this module or its caller
+ * (src/walker.ts). `.skillguardignore` is read from the *scan target
+ * itself* by default (see src/scan/index.ts), i.e. from the exact
+ * untrusted content SkillGuard exists to vet, so a hostile pattern here is
+ * directly attacker-controlled input: a malicious skill submission can ship
+ * a `.skillguardignore` line of this shape and hang any CI job that scans
+ * it, indefinitely, with no per-file timeout able to intervene (that
+ * mechanism only covers rule-pattern matching in semgrep-runner.ts, not
+ * suppression-glob matching here). Neither brace expansion nor extglob is
+ * meaningful for a `.gitignore`-style path-suppression file (gitignore
+ * itself has no brace/extglob syntax), so both are disabled unconditionally
+ * rather than attempting to detect "bad" patterns after the fact.
+ */
+export const MINIMATCH_OPTIONS = { dot: true, nobrace: true, noext: true } as const;
+
+/**
  * minimatch itself is deliberately lenient (it treats most malformed glob
  * text as a literal match rather than throwing), so it can't be relied on to
  * reject a typo like a missing closing bracket. This checks bracket/brace
@@ -25,6 +58,8 @@ export interface IgnoreFileResult {
  * or a pattern over minimatch's 64KB length cap).
  */
 function isPatternSyntaxValid(pattern: string): boolean {
+  if (pattern.length > MAX_PATTERN_LENGTH) return false;
+
   let bracketDepth = 0;
   let braceDepth = 0;
   for (let i = 0; i < pattern.length; i++) {
@@ -42,7 +77,7 @@ function isPatternSyntaxValid(pattern: string): boolean {
   if (bracketDepth !== 0 || braceDepth !== 0) return false;
 
   try {
-    minimatch.makeRe(pattern, { dot: true });
+    minimatch.makeRe(pattern, MINIMATCH_OPTIONS);
     return true;
   } catch {
     return false;
