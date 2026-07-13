@@ -31,8 +31,8 @@ which returns zero findings and exit code 0.
 ## Benchmarks
 
 Every number below is something we actually ran, with the command shown
-next to it, so you can reproduce it yourself. None of this is extrapolated
-or rounded in SkillGuard's favor.
+next to it, so you can reproduce it yourself: no extrapolation, no
+rounding in SkillGuard's favor.
 
 **Time to first scan** (fresh clone, `npm install`, build, first scan against
 the bundled fixture), timed on 2026-07-13 against `build/v0.1`:
@@ -51,11 +51,11 @@ node dist/cli.js scan ./examples/known-bad-skill
 | first scan | 0.2s |
 | **Total** | **~3.3s** |
 
-This was one real, timestamped run on a warm local npm cache and a fast
-network connection, not an average across many runs, so treat it as a
-lower bound rather than a guarantee. `npx skillguard-cli` (once published)
-adds npm's own resolve-and-download time on top of the "first scan" row
-above.
+This is a single real, timestamped run on a warm local npm cache and a
+fast network connection, no averaging across multiple runs. Treat it as
+a lower bound: a cold cache or a slower connection will push the total
+higher. `npx skillguard-cli` (once published) adds npm's own
+resolve-and-download time on top of the "first scan" row above.
 
 **Known-bad fixture**, `node dist/cli.js scan ./examples/known-bad-skill`:
 11 findings (5 HIGH, 5 MEDIUM, 1 LOW) spanning all 7 rule categories
@@ -67,10 +67,10 @@ severity split are unchanged from before that fix.
 **Clean fixtures**, `node dist/cli.js scan ./examples/clean-skill` and
 `node dist/cli.js scan ./examples/clean-skill-python`: 0 findings, exit
 code 0, on both. This confirms the rule packs stay quiet on two
-intentionally well-behaved skills. It is a 2-fixture sanity check, not a
-false-positive-rate study: we have not run SkillGuard against a large
-corpus of real-world skills yet, so we are not claiming a general
-"0% false positive rate."
+intentionally well-behaved skills. Treat it as a 2-fixture sanity check:
+SkillGuard hasn't been run against a large corpus of real-world skills
+yet, so this isn't a general
+"0% false positive rate" claim.
 
 **Test suite**: 59/59 passing (`npm test`), including a real, non-mocked
 wall-clock regression test for the per-file ReDoS timeout.
@@ -253,7 +253,7 @@ skill before publishing.
 
 ## Known Limitations
 
-SkillGuard v0.1 has documented, intentional gaps rather than silent ones.
+SkillGuard v0.1 documents its gaps in the open, on purpose.
 The full list, including the residual single-pattern ReDoS risk and the
 symlinks-are-unscanned-not-followed policy, both closed as far as they can
 be in a synchronous, worker-free v0.1 and tracked for a real fix in v0.2,
