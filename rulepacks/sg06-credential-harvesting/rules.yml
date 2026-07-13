@@ -1,0 +1,65 @@
+# SG06 — credential harvesting
+#
+# Confirmed executable-impact patterns: reading a credential-shaped
+# environment variable or a well-known credential file. Severity HIGH per
+# the locked taxonomy — combined with any outbound network call nearby, this
+# is a direct exfiltration path.
+rules:
+  - id: sg06-env-credential-read-node
+    message: >-
+      Reads a credential-shaped environment variable (KEY/SECRET/TOKEN/
+      PASSWORD/CREDENTIAL). If this value is later sent over the network,
+      this is a direct credential-exfiltration path.
+    severity: HIGH
+    languages: [javascript, typescript]
+    regex: 'process\.env\.\w*(KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL|PRIVATE)\w*'
+    flags: 'gi'
+
+  - id: sg06-env-credential-read-python
+    message: >-
+      Reads a credential-shaped environment variable (KEY/SECRET/TOKEN/
+      PASSWORD/CREDENTIAL). If this value is later sent over the network,
+      this is a direct credential-exfiltration path.
+    severity: HIGH
+    languages: [python]
+    regex: 'os\.environ(\.get)?\(?[\[\(]?[''"]\w*(KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL|PRIVATE)\w*'
+    flags: 'gi'
+
+  - id: sg06-env-credential-read-shell
+    message: >-
+      Reads a credential-shaped environment variable (KEY/SECRET/TOKEN/
+      PASSWORD/CREDENTIAL). If this value is later sent over the network,
+      this is a direct credential-exfiltration path.
+    severity: HIGH
+    languages: [shell]
+    regex: '\$\{?\w*(KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL|PRIVATE)\w*\}?|printenv\s+\w*(KEY|SECRET|TOKEN|PASSWORD)\w*'
+    flags: 'gi'
+
+  - id: sg06-ssh-key-read
+    message: >-
+      Reads a private SSH key file directly. A legitimate skill has no
+      reason to read another user's SSH private key.
+    severity: HIGH
+    languages: [javascript, typescript, python, shell]
+    regex: '\.ssh/id_(rsa|ed25519|ecdsa|dsa)\b(?!\.pub)'
+    flags: 'gi'
+
+  - id: sg06-cloud-credential-file-read
+    message: >-
+      Reads a well-known cloud-provider credentials file (~/.aws/credentials
+      or a service-account JSON key). A legitimate skill has no reason to
+      read another tool's stored cloud credentials.
+    severity: HIGH
+    languages: [javascript, typescript, python, shell]
+    regex: '\.aws/credentials\b|service[-_]?account.*\.json\b'
+    flags: 'gi'
+
+  - id: sg06-credential-network-send
+    message: >-
+      A credential-shaped variable is used inside the same statement as an
+      outbound network call (curl/fetch/requests/axios) — a direct
+      credential-exfiltration pattern.
+    severity: HIGH
+    languages: [javascript, typescript, python, shell]
+    regex: '(curl|fetch|requests\.(get|post)|axios)[^\n]{0,120}(KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL)'
+    flags: 'gi'

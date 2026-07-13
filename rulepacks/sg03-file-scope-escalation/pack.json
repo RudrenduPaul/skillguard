@@ -1,0 +1,9 @@
+{
+  "name": "sg03-file-scope-escalation",
+  "version": "0.1.0",
+  "category": "SG03",
+  "minCoreVersion": "0.1.0",
+  "description": "Flags filesystem writes/deletes/permission changes that reach outside a skill's own working directory: system paths, credential files, and recursive deletes.",
+  "kind": "pattern",
+  "rulesFile": "rules.yml"
+}

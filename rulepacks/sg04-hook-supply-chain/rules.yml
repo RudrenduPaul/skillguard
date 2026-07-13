@@ -1,0 +1,45 @@
+# SG04 — hook supply-chain
+#
+# Confirmed executable-impact patterns: an install-time hook (postinstall/
+# preinstall) or a dependency declaration itself fetches and executes remote
+# code, or pins to a mutable branch ref instead of a fixed version/commit.
+# Severity HIGH per the locked taxonomy.
+rules:
+  - id: sg04-postinstall-remote-fetch
+    message: >-
+      A postinstall/preinstall hook downloads and executes a remote script.
+      Install-time hooks run automatically and silently for every consumer
+      of this skill, making this a supply-chain compromise vector.
+    severity: HIGH
+    languages: [shell, javascript, typescript]
+    regex: '(postinstall|preinstall)[\s\S]{0,200}?(curl|wget)\s+[^\n]*\|\s*(sudo\s+)?(bash|sh)'
+    flags: 'gi'
+
+  - id: sg04-pip-install-git-http
+    message: >-
+      Installing a Python dependency directly from an unpinned git/HTTP URL
+      (rather than a versioned package or a pinned commit SHA) lets the
+      remote source change the installed code at any time without review.
+    severity: HIGH
+    languages: [shell, python]
+    regex: 'pip[3]?\s+install\s+git\+(http|https)://[^\s#]+(?!.*@[0-9a-f]{7,40})'
+    flags: 'gi'
+
+  - id: sg04-npm-install-unpinned-branch
+    message: >-
+      Installing an npm dependency straight from a git branch reference
+      (e.g. #main, #master) rather than a pinned tag or commit SHA lets the
+      upstream maintainer silently change the installed code post-review.
+    severity: HIGH
+    languages: [shell]
+    regex: 'npm\s+install\s+[^\s]+\.git#(main|master|head|latest)\b'
+    flags: 'gi'
+
+  - id: sg04-dynamic-require-url
+    message: >-
+      Requiring/importing a module directly from a remote URL executes
+      whatever code that URL currently serves, with no local review step.
+    severity: HIGH
+    languages: [javascript, typescript]
+    regex: '(require|import)\s*\(\s*[`"'']https?://'
+    flags: 'gi'
