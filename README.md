@@ -1,5 +1,9 @@
 # SkillGuard
 
+[![npm version](https://img.shields.io/npm/v/skillguard-cli.svg)](https://www.npmjs.com/package/skillguard-cli)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
+[![Tests](https://img.shields.io/badge/tests-59%2F59%20passing-brightgreen.svg)](./CHANGELOG.md)
+
 36% of published agent skills have exploitable flaws per Snyk. SkillGuard scans SKILL.md, hooks, and scripts for known attack patterns before they run, and gates your CI on the result.
 
 Third-party AI agent-skill files (`SKILL.md` manifests, hooks, and bundled
