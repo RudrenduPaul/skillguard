@@ -17,9 +17,9 @@ npx skillguard-cli scan ./examples/known-bad-skill
 
 This runs against a fixture bundled with the repo — safe, non-functional,
 and deliberately pattern-matchable — and returns a real HIGH-severity
-finding with a file:line citation. On the first run, SkillGuard prints a
-"Loading SkillGuard rule packs..." message while it warms up; that's
-expected, not a hang.
+finding with a file:line citation. Every scan prints a
+"Loading SkillGuard rule packs..." message to stderr before it starts;
+that's expected, not a hang.
 
 Compare it against a clean fixture:
 
