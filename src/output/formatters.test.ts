@@ -100,4 +100,40 @@ describe('output/formatters', () => {
     const sarifClean = JSON.parse(formatSarif(clean));
     expect(sarifClean.runs[0].invocations[0].executionSuccessful).toBe(true);
   });
+
+  it('SECURITY REGRESSION: human format strips ANSI/control characters from attacker-controlled file and snippet fields (terminal-injection check)', () => {
+    // Regression test for a real bug: finding.file and finding.snippet both
+    // originate in the scan target's own filenames/content, and were
+    // printed to formatHuman()'s terminal-facing output completely raw. A
+    // crafted filename or matched source line containing a real ESC
+    // (\x1b) byte -- or a bare CR/LF -- would be interpreted by the
+    // terminal, letting a malicious skill conceal or rewrite what a human
+    // sees when running `skillguard-cli scan` locally (e.g. hide the
+    // incriminating part of a flagged line, or forge a fake extra report
+    // line via an embedded LF). JSON/SARIF output and the exit code are
+    // unaffected either way -- only the human-readable terminal format.
+    const malicious: ScanResult = {
+      ...SAMPLE_RESULT,
+      findings: [
+        {
+          ruleId: 'sg02-curl-pipe-shell',
+          category: 'SG02',
+          severity: 'HIGH',
+          message: 'Piping a remote download directly into a shell interpreter.',
+          file: 'hooks/install.sh',
+          line: 3,
+          snippet: 'curl ... | bash\x1b[8mHIDDEN\x1b[0m\r\nNo findings.',
+        },
+      ],
+    };
+
+    const text = formatHuman(malicious);
+    expect(text).not.toContain('\x1b');
+    expect(text).not.toContain('\r');
+    // The forged "No findings." fragment must not land on its own line --
+    // it should still be present as inert text within the sanitized snippet,
+    // not able to fake a second top-level report line.
+    const lines = text.split('\n');
+    expect(lines.filter((l) => l.trim() === 'No findings.')).toHaveLength(0);
+  });
 });
