@@ -5,7 +5,7 @@ import type { Finding, RuleCategory } from '../types';
 
 /**
  * DEVIATION NOTE (documented per the build instructions — no real "official
- * npm Semgrep wrapper" exists to bundle): the locked [redacted] calls for
+ * npm Semgrep wrapper" exists to bundle): the original design calls for
  * invoking Semgrep via "the official @semgrep/semgrep npm wrapper." No such
  * package exists on the npm registry — Semgrep's only official distribution
  * is the `semgrep` PyPI package plus platform binaries, with no npm-native
@@ -25,7 +25,7 @@ import type { Finding, RuleCategory } from '../types';
  * while remaining fully swappable for a real Semgrep binary invocation later
  * without changing the rule-pack contract or any caller of this module.
  *
- * Security invariant ([redacted] Section 1, finding 2): this module never
+ * Security invariant: this module never
  * eval()s, require()s, or dynamically imports anything read from the scan
  * target. It only ever reads file bytes and runs a fixed, first-party
  * RegExp against them.
@@ -109,7 +109,7 @@ function lineNumberFromIndex(lineStarts: number[], index: number): number {
 
 /**
  * How many matches of a single global rule to process between elapsed-time
- * checks. The [redacted]-locked per-file timeout is cooperative (a single
+ * checks. The per-file timeout is cooperative (a single
  * synchronous RegExp#exec call can't be preempted from within the same JS
  * thread), so this bounds the *number of matches* a single rule can process
  * past the configured budget rather than the wall-clock time directly. A
