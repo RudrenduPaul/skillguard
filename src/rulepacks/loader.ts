@@ -41,8 +41,8 @@ function skipWarning(packName: string, why: string, fix: string): ScanWarning {
  * containing a pack.json manifest. Malformed JSON, a manifest that fails
  * schema validation, a minCoreVersion the running core doesn't satisfy, or
  * an unparseable/invalid rules file all cause that one pack to be skipped
- * with a warning — the remaining valid packs still run (locked behavior,
- * [redacted] Section 2.1). Nothing here ever throws for a bad pack.
+ * with a warning — the remaining valid packs still run (locked behavior).
+ * Nothing here ever throws for a bad pack.
  */
 export function loadRulePacks(
   rulepacksDir: string,
