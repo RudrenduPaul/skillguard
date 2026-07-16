@@ -167,7 +167,7 @@ export function formatSarif(result: ScanResult): string {
   // invalid rule pack." Those surface via result.warnings (already
   // WHAT/WHY/FIX formatted), but formatSarif previously dropped that array
   // entirely: a CI engineer running the GitHub Action (which defaults to
-  // --format sarif per the locked [redacted]) got a validly-shaped but
+  // --format sarif) got a validly-shaped but
   // silently incomplete SARIF file on every scan-level error or warning --
   // exactly the format the Action always uses. SARIF 2.1.0's
   // invocations[].toolExecutionNotifications is the spec-correct place
