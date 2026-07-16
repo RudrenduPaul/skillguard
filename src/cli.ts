@@ -88,7 +88,7 @@ export async function runCli(argv: string[]): Promise<number> {
       const timeoutMs = parseTimeout(opts.timeout);
 
       if (format !== 'json') {
-        // First-run friction fix ([redacted]): the pattern engine is
+        // First-run friction fix: the pattern engine is
         // bundled, but scans of a new target can still take a moment on a
         // large directory — tell the user SkillGuard is working, not hung.
         process.stderr.write('Loading SkillGuard rule packs...\n');
