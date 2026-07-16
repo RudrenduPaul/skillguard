@@ -9,7 +9,7 @@ import { MINIMATCH_OPTIONS } from './suppress/skillguardignore';
  * are JavaScript/TypeScript, Python, and shell (the languages the bundled
  * pattern rule packs have coverage for). Anything else found under a
  * hooks/ or scripts/ directory is reported as "unscanned" rather than
- * silently dropped, per the [redacted].
+ * silently dropped.
  */
 
 const ALWAYS_IGNORED_DIRS = new Set(['.git', 'node_modules', '.skillguard-cache']);
