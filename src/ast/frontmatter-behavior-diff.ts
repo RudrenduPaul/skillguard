@@ -18,8 +18,8 @@ import * as fs from 'node:fs';
  *   filesystem: none        # "none" | "read-only" | "read-write"
  *   ---
  *
- * A mismatch (declared narrower than actual) is a MEDIUM finding per the
- * [redacted]: declared-scope violation without a confirmed
+ * A mismatch (declared narrower than actual) is a MEDIUM finding:
+ * declared-scope violation without a confirmed
  * exploit path, as distinct from SG02/SG06's confirmed executable impact.
  */
 
