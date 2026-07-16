@@ -1,16 +1,15 @@
 # SG05 — obfuscated payloads
 #
-# KNOWN LIMITATION (documented per the [redacted], not an oversight):
+# KNOWN LIMITATION (not an oversight):
 # this category has a materially higher false-negative rate than the other
 # six under pure static analysis. Obfuscation techniques evolve faster than
 # any fixed regex list, and a sufficiently determined author can always
 # reshape a payload to slip past pattern matching. These rules catch known,
 # common encoding/eval idioms — they are best-effort coverage, not a
-# complete answer to obfuscation. A behavioral sandbox-diff (Approach C at
-# [redacted]) would catch more, but was explicitly rejected as too heavy
-# for v0.1. Findings here are scoped to LOW severity (suspicious-but-
-# unconfirmed) per the [redacted], reflecting that lower
-# confidence honestly rather than overstating it.
+# complete answer to obfuscation. A behavioral sandbox-diff would catch
+# more, but was explicitly rejected as too heavy for v0.1. Findings here
+# are scoped to LOW severity (suspicious-but-unconfirmed), reflecting
+# that lower confidence honestly rather than overstating it.
 rules:
   - id: sg05-base64-decode-into-eval-node
     message: >-
