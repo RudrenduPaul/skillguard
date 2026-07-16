@@ -41,7 +41,7 @@ runs:
     # Scans and writes SARIF, but always exits 0 here -- the gate decision
     # happens in the final step, after the SARIF upload runs, so a failing
     # scan still shows up in GitHub code scanning instead of being lost.
-    - name: Run SkillGuard (SARIF output, default per the [redacted])
+    - name: Run SkillGuard (SARIF output, the default format)
       id: scan
       shell: bash
       run: |
