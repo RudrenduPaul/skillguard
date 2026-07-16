@@ -41,7 +41,7 @@ Initial release.
 - `examples/known-bad-skill` and `examples/clean-skill` fixtures for the
   README demo command and end-to-end tests.
 
-### Security ([redacted ] pass, before v0.1 ships)
+### Security (before v0.1 ships)
 
 - **Fixed: suppression trust boundary.** `.skillguardignore` was previously
   auto-loaded from `<target>/.skillguardignore` by default, and inline
