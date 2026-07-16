@@ -13,7 +13,7 @@ import { meetsThreshold, type ScanOptions, type ScanResult, type Severity } from
 import { formatWhatWhyFix } from '../errors';
 
 /*
- * Data flow (locked at [redacted], reproduced here for anyone reading this
+ * Data flow (reproduced here for anyone reading this
  * file first):
  *
  *   target path
