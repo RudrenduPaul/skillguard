@@ -64,9 +64,9 @@ resolve-and-download time on top of the "first scan" row above.
 **Known-bad fixture**, `node dist/cli.js scan ./examples/known-bad-skill`:
 11 findings (5 HIGH, 5 MEDIUM, 1 LOW) spanning all 7 rule categories
 (SG01 through SG07), across the fixture's 5 hook/script files, exit code 1,
-wall time 0.155s. This number was re-verified after the [redacted ]
-pass that changed default suppression behavior; the finding count and
-severity split are unchanged from before that fix.
+wall time 0.155s. This number was re-verified after a change to default
+suppression behavior; the finding count and severity split are unchanged
+from before that fix.
 
 **Clean fixtures**, `node dist/cli.js scan ./examples/clean-skill` and
 `node dist/cli.js scan ./examples/clean-skill-python`: 0 findings, exit
