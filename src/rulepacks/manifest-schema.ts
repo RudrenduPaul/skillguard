@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
 /**
- * The rule-pack plugin contract (locked at [redacted]): a rule pack is a
+ * The rule-pack plugin contract: a rule pack is a
  * directory with a pack.json manifest plus its .yml pattern-rule file (for
  * "pattern" packs) or a reference to a first-party structural module (for
  * "structural" packs — v0.1 only ships one, SG07's frontmatter/behavior diff).
  *
  * Every manifest is validated against this schema before its pack is allowed
  * to run. An invalid manifest causes that single pack to be skipped with a
- * warning — it never hard-fails the whole scan (Section 2 of the [redacted]).
+ * warning — it never hard-fails the whole scan.
  */
 
 const SEMVER_RE = /^\d+\.\d+\.\d+$/;
