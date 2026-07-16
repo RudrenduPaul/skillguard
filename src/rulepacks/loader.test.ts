@@ -67,8 +67,8 @@ describe('rulepacks/loader', () => {
     expect(packs[0].rules[0].id).toBe('test-rule');
   });
 
-  // CRITICAL test ([redacted] Section 3): a malformed manifest must be
-  // skipped with a warning, and must NOT take down the rest of the scan.
+  // CRITICAL test: a malformed manifest must be skipped with a warning,
+  // and must NOT take down the rest of the scan.
   it('[CRITICAL] skips a malformed manifest with a warning and still loads the remaining valid packs', () => {
     writePack(rulepacksDir, 'broken-pack', { name: 'broken-pack' }); // missing required fields
     writePack(
