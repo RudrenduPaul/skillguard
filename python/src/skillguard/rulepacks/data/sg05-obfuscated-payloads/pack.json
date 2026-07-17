@@ -1,0 +1,9 @@
+{
+  "name": "sg05-obfuscated-payloads",
+  "version": "0.1.0",
+  "category": "SG05",
+  "minCoreVersion": "0.1.0",
+  "description": "Flags known obfuscation idioms (base64 decode into eval/exec, chained string concatenation, String.fromCharCode/chr() reassembly, dynamic Function construction) that are commonly used to hide a payload from a plain-text review.",
+  "kind": "pattern",
+  "rulesFile": "rules.yml"
+}

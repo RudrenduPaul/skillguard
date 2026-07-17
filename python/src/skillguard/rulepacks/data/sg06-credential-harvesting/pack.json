@@ -1,0 +1,9 @@
+{
+  "name": "sg06-credential-harvesting",
+  "version": "0.1.0",
+  "category": "SG06",
+  "minCoreVersion": "0.1.0",
+  "description": "Flags reads of credential-shaped environment variables or credential files, and network calls used to exfiltrate them.",
+  "kind": "pattern",
+  "rulesFile": "rules.yml"
+}

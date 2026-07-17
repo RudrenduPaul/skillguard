@@ -1,0 +1,47 @@
+# SG01 — network mismatch
+#
+# Raw/low-level network primitives are rarely needed by a legitimate agent
+# skill (which typically only needs simple HTTP calls, if any) and are a
+# classic building block for a covert command-and-control channel. Severity
+# MEDIUM per the locked taxonomy: declared-scope violation without a
+# confirmed exploit path.
+rules:
+  - id: sg01-raw-socket-python
+    message: >-
+      Raw socket creation (Python "socket" module) bypasses typical HTTP-only
+      network scope and is a common building block for a covert
+      command-and-control channel.
+    severity: MEDIUM
+    languages: [python]
+    regex: 'socket\.socket\s*\('
+    flags: 'g'
+
+  - id: sg01-raw-socket-node
+    message: >-
+      Raw TCP/UDP socket creation (Node "net"/"dgram" module) bypasses
+      typical HTTP-only network scope and is a common building block for a
+      covert command-and-control channel.
+    severity: MEDIUM
+    languages: [javascript, typescript]
+    regex: '\b(net\.connect|net\.createConnection|dgram\.createSocket)\s*\('
+    flags: 'g'
+
+  - id: sg01-netcat-shell
+    message: >-
+      Direct use of netcat (nc/ncat) opens a raw network connection outside
+      any declared HTTP scope, commonly used for reverse shells or data
+      exfiltration.
+    severity: MEDIUM
+    languages: [shell]
+    regex: '\b(nc|ncat|netcat)\s+-'
+    flags: 'g'
+
+  - id: sg01-dev-tcp-redirect
+    message: >-
+      Bash's /dev/tcp pseudo-device redirection opens a raw TCP socket
+      without any HTTP client, a well-known technique for bash-only reverse
+      shells that don't depend on curl/wget/nc being installed.
+    severity: MEDIUM
+    languages: [shell]
+    regex: '/dev/tcp/[A-Za-z0-9_.-]+/\d+'
+    flags: 'g'
