@@ -6,6 +6,13 @@ both distributions -- the npm package (`skillguard-cli`, JS/TS) and the
 PyPI package (`skillguard-cli`, Python) -- since they ship the same rule
 packs and scan semantics; entries note which distribution they apply to.
 
+## [Python 0.1.2] - 2026-07-17
+
+Metadata-only release. Added Sourav Nandy as a listed co-author in
+`pyproject.toml` (`authors`) and `project.urls`, matching the attribution
+already used on this account's other PyPI packages (`memtrust`,
+`agent-eval`, `agent-observability`, `ownvoice`). No code changes.
+
 ## [Python 0.1.1] - 2026-07-16
 
 Initial public release of the Python port, published to PyPI as
