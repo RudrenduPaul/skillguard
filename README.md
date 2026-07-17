@@ -1,6 +1,7 @@
 # SkillGuard
 
 [![npm version](https://img.shields.io/npm/v/skillguard-cli.svg)](https://www.npmjs.com/package/skillguard-cli)
+[![PyPI version](https://img.shields.io/pypi/v/skillguard-cli.svg)](https://pypi.org/project/skillguard-cli/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 [![Tests](https://img.shields.io/badge/tests-59%2F59%20passing-brightgreen.svg)](./CHANGELOG.md)
 
@@ -145,12 +146,27 @@ the unflattering parts out loud:
 
 ## Install
 
+SkillGuard ships two independent, equally first-class packages -- pick
+whichever fits your toolchain, or install both. Neither is deprecated in
+favor of the other; they read the same seven bundled rule packs and produce
+the same findings against the same target.
+
 ```bash
+# npm -- JavaScript/TypeScript CLI + library
 npm install --save-dev skillguard-cli
+
+# PyPI -- Python CLI + library (genuine port, not a wrapper around the Node binary)
+pip install skillguard-cli
 ```
 
-No separate install step, no external binary to fetch: SkillGuard's seven
-rule packs and pattern-matching engine ship inside the npm package.
+No separate install step, no external binary to fetch either way:
+SkillGuard's seven rule packs and pattern-matching engine ship inside the
+npm package and the Python wheel alike. The Python package's CLI entry
+point is `skillguard` (e.g. `skillguard scan ./my-skill`); see
+[`python/README.md`](./python/README.md) and
+[docs/getting-started.md](./docs/getting-started.md) for the Python-specific
+walkthrough, and [CHANGELOG.md](./CHANGELOG.md) for each distribution's
+version history.
 
 ## CLI usage
 

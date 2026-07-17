@@ -1,0 +1,8 @@
+{
+  "name": "sg07-frontmatter-spoofing",
+  "version": "0.1.0",
+  "category": "SG07",
+  "minCoreVersion": "0.1.0",
+  "description": "Structural check: compares SKILL.md's declared network/filesystem scope against the actual behavior implied by its hooks/scripts (src/ast/frontmatter-behavior-diff.ts). A structural pack ships no Semgrep-style rules file — the comparison logic ships in core since it needs a parsed view of both the manifest and the script set together, not a single-file pattern match.",
+  "kind": "structural"
+}

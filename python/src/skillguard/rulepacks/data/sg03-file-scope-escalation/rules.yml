@@ -1,0 +1,51 @@
+# SG03 — file-scope escalation
+#
+# Declared-scope violation without a confirmed exploit path: the skill
+# touches paths a legitimate skill has no business touching. Severity MEDIUM
+# per the locked taxonomy.
+rules:
+  - id: sg03-recursive-root-delete
+    message: >-
+      "rm -rf" targeting a system path (/, /etc, /usr, /home, ~) deletes far
+      outside a skill's own working directory.
+    severity: MEDIUM
+    languages: [shell]
+    regex: 'rm\s+-rf\s+(/(etc|usr|bin|home|var|System)\b|/\s|~(?!/\.?skillguard))'
+    flags: 'gi'
+
+  - id: sg03-world-writable-chmod
+    message: >-
+      chmod 777 (or similarly permissive modes) on a system path grants any
+      local user read/write/execute access, a classic privilege-escalation
+      building block.
+    severity: MEDIUM
+    languages: [shell]
+    regex: 'chmod\s+(-R\s+)?[0-7]*7\s+/(etc|usr|bin|var)\b'
+    flags: 'gi'
+
+  - id: sg03-write-outside-cwd-node
+    message: >-
+      Writing to an absolute system path (e.g. /etc, ~/.ssh) via fs.writeFile
+      reaches outside a skill's own working directory.
+    severity: MEDIUM
+    languages: [javascript, typescript]
+    regex: 'fs\.(writeFile|writeFileSync|appendFile|appendFileSync)\s*\(\s*[`"'']\s*(/etc|/usr|~\/\.ssh|~\/\.aws)'
+    flags: 'gi'
+
+  - id: sg03-write-outside-cwd-python
+    message: >-
+      Opening an absolute system path (e.g. /etc, ~/.ssh) in write mode
+      reaches outside a skill's own working directory.
+    severity: MEDIUM
+    languages: [python]
+    regex: 'open\(\s*["'']\s*(/etc|/usr|~\/\.ssh|~\/\.aws).*["'']\s*,\s*["'']w'
+    flags: 'gi'
+
+  - id: sg03-path-traversal
+    message: >-
+      Repeated "../" path-traversal segments used to escape a skill's own
+      working directory when constructing a file path.
+    severity: MEDIUM
+    languages: [javascript, typescript, python, shell]
+    regex: '(\.\./){3,}'
+    flags: 'g'

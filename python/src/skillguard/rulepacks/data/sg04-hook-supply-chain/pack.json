@@ -1,0 +1,9 @@
+{
+  "name": "sg04-hook-supply-chain",
+  "version": "0.1.0",
+  "category": "SG04",
+  "minCoreVersion": "0.1.0",
+  "description": "Flags install/postinstall hooks and dependency declarations that fetch and run remote code at install time, or pin a dependency to an unpinned branch/URL instead of a fixed version.",
+  "kind": "pattern",
+  "rulesFile": "rules.yml"
+}
