@@ -1,7 +1,56 @@
 # Changelog
 
 All notable changes to SkillGuard are documented in this file, so a rule-pack
-change never breaks a CI gate with no explanation.
+change never breaks a CI gate with no explanation. This changelog covers
+both distributions -- the npm package (`skillguard-cli`, JS/TS) and the
+PyPI package (`skillguard-cli`, Python) -- since they ship the same rule
+packs and scan semantics; entries note which distribution they apply to.
+
+## [Python 0.1.1] - 2026-07-16
+
+Initial public release of the Python port, published to PyPI as
+`skillguard-cli` (`pip install skillguard-cli`). Complementary to, not a
+replacement for, the existing npm package -- both are first-class and
+maintained together. See `python/README.md` for Python-specific usage.
+
+0.1.1 follows 0.1.0 same-day: a post-publish dependency review tightened
+the `PyYAML` dependency to a pinned upper bound (`>=6.0,<7` instead of an
+open-ended `>=6.0`). 0.1.0 remains installable on PyPI but 0.1.1 is the
+version this changelog entry and `python/README.md` describe; install
+`skillguard-cli` (unpinned) to always get the latest.
+
+### Added
+
+- `skillguard scan <path>` CLI (console script `skillguard`, package
+  `skillguard`) with the same flags as the npm CLI: `--format`
+  (human/json/sarif), `--severity-threshold` (default HIGH), `--timeout`
+  (default 10000ms), `--skillguardignore`, and `--allow-inline-suppression`.
+- Programmatic library API: `from skillguard import scan_skill, ScanOptions`,
+  returning the same structured result shape (`ScanResult` dataclass with
+  `findings`, `timeouts`, `unscanned_files`, `warnings`, `exit_code`).
+- All seven first-party rule packs (SG01 through SG07) reimplemented as
+  genuine Python logic -- the same rule contract (pack.json manifest +
+  rules.yml pattern rules for SG01-SG06, a first-party structural module for
+  SG07's frontmatter/behavior diff), bundled inside the wheel, no
+  cross-language dependency on the Node/npm package at runtime.
+- A first-party glob compiler for `.skillguardignore` suppression (no
+  third-party glob-matching dependency), implementing the same
+  brace-expansion-disabled, extglob-disabled semantics as the npm package's
+  `minimatch` usage, for the same ReDoS-avoidance reason documented in that
+  package's source.
+- Full pytest suite (54 tests) ported from the TypeScript vitest suite,
+  covering every rule pack, the walker, suppression, rule-pack loader,
+  output formatters (human/json/sarif), the CLI, and an end-to-end pass
+  against the same bundled `examples/` fixtures the npm package's tests use.
+
+### Notes
+
+- Verified byte-for-byte parity against the npm package's own documented
+  benchmark: scanning `examples/known-bad-skill` with both CLIs produces
+  the same 11 findings (5 HIGH, 5 MEDIUM, 1 LOW) across the same rule
+  categories.
+- `examples/clean-skill` and `examples/clean-skill-python` both scan clean
+  (0 findings, exit code 0) under the Python CLI, matching the npm CLI.
 
 ## [0.1.0] - 2026-07-12
 

@@ -1,0 +1,67 @@
+# SG05 — obfuscated payloads
+#
+# KNOWN LIMITATION (not an oversight):
+# this category has a materially higher false-negative rate than the other
+# six under pure static analysis. Obfuscation techniques evolve faster than
+# any fixed regex list, and a sufficiently determined author can always
+# reshape a payload to slip past pattern matching. These rules catch known,
+# common encoding/eval idioms — they are best-effort coverage, not a
+# complete answer to obfuscation. A behavioral sandbox-diff would catch
+# more, but was explicitly rejected as too heavy for v0.1. Findings here
+# are scoped to LOW severity (suspicious-but-unconfirmed), reflecting
+# that lower confidence honestly rather than overstating it.
+rules:
+  - id: sg05-base64-decode-into-eval-node
+    message: >-
+      A base64-decoded string is passed directly into eval() or the
+      Function() constructor — a common technique to hide a payload from a
+      plain-text code review. Best-effort match; see the known false-
+      negative-rate note at the top of this rules file.
+    severity: LOW
+    languages: [javascript, typescript]
+    regex: '(eval|Function)\s*\(\s*(atob\(|Buffer\.from\([^)]*[''"]base64)'
+    flags: 'gi'
+
+  - id: sg05-base64-decode-into-exec-python
+    message: >-
+      A base64-decoded string is passed directly into eval() or exec() — a
+      common technique to hide a payload from a plain-text code review.
+      Best-effort match; see the known false-negative-rate note at the top
+      of this rules file.
+    severity: LOW
+    languages: [python]
+    regex: '(eval|exec)\s*\(\s*base64\.b64decode\('
+    flags: 'gi'
+
+  - id: sg05-string-fromcharcode-chain
+    message: >-
+      A long String.fromCharCode()/chr() reassembly chain is a classic way
+      to build a string (often a payload or URL) without it appearing as
+      plain text anywhere in the file. Best-effort match; see the known
+      false-negative-rate note at the top of this rules file.
+    severity: LOW
+    languages: [javascript, typescript]
+    regex: 'String\.fromCharCode\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+'
+    flags: 'g'
+
+  - id: sg05-chained-string-concat-eval
+    message: >-
+      A long chain of quoted-string concatenation feeding into eval()/exec()
+      is a common way to split a suspicious literal so it doesn't appear
+      intact anywhere in the file. Best-effort match; see the known false-
+      negative-rate note at the top of this rules file.
+    severity: LOW
+    languages: [javascript, typescript, python]
+    regex: '(eval|exec|Function)\s*\(\s*([`"''][^`"'']*[`"'']\s*\+\s*){3,}'
+    flags: 'gi'
+
+  - id: sg05-dynamic-function-constructor
+    message: >-
+      Building a function from a runtime-assembled string via the Function()
+      constructor evaluates code that would not appear as a normal function
+      declaration under static review. Best-effort match; see the known
+      false-negative-rate note at the top of this rules file.
+    severity: LOW
+    languages: [javascript, typescript]
+    regex: 'new\s+Function\s*\('
+    flags: 'g'

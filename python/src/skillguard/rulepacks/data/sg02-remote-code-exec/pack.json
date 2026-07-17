@@ -1,0 +1,9 @@
+{
+  "name": "sg02-remote-code-exec",
+  "version": "0.1.0",
+  "category": "SG02",
+  "minCoreVersion": "0.1.0",
+  "description": "Flags patterns that execute remotely-fetched content: curl/wget piped into a shell, eval() of downloaded data, and shelling out with attacker-influenced or remote content.",
+  "kind": "pattern",
+  "rulesFile": "rules.yml"
+}
