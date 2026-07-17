@@ -4,13 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "skillguard-cli"
-version = "0.1.1"
+version = "0.1.2"
 description = "Security scanner for third-party AI agent-skill files: SKILL.md manifests, hooks, and bundled scripts."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "Apache-2.0"
 authors = [
-  { name = "Rudrendu Paul" }
+  { name = "Rudrendu Paul" },
+  { name = "Sourav Nandy" },
 ]
 keywords = ["security", "ai-agents", "skill-scanner", "sast", "supply-chain", "static-analysis", "cli", "sarif"]
 classifiers = [
@@ -45,6 +46,8 @@ Repository = "https://github.com/RudrenduPaul/skillguard"
 "Bug Tracker" = "https://github.com/RudrenduPaul/skillguard/issues"
 Changelog = "https://github.com/RudrenduPaul/skillguard/blob/main/CHANGELOG.md"
 Documentation = "https://github.com/RudrenduPaul/skillguard/blob/main/docs/getting-started.md"
+"Author - Rudrendu Paul" = "https://github.com/RudrenduPaul"
+"Author - Sourav Nandy" = "https://github.com/Sourav-nandy-ai"
 
 [project.scripts]
 skillguard = "skillguard.cli:main"
