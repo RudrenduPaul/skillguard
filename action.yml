@@ -41,39 +41,52 @@ runs:
     # Scans and writes SARIF, but always exits 0 here -- the gate decision
     # happens in the final step, after the SARIF upload runs, so a failing
     # scan still shows up in GitHub code scanning instead of being lost.
+    #
+    # Inputs are passed via env: rather than interpolated into the script
+    # with ${{ }} -- GitHub Actions substitutes ${{ }} expressions into the
+    # script text before the shell ever runs it, so any input value
+    # containing shell metacharacters would otherwise be executed verbatim.
     - name: Run SkillGuard (SARIF output, the default format)
       id: scan
       shell: bash
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_SEVERITY_THRESHOLD: ${{ inputs.severity-threshold }}
+        INPUT_TIMEOUT: ${{ inputs.timeout }}
+        INPUT_SKILLGUARDIGNORE: ${{ inputs.skillguardignore }}
+        INPUT_ALLOW_INLINE_SUPPRESSION: ${{ inputs.allow-inline-suppression }}
+        INPUT_SARIF_OUTPUT: ${{ inputs.sarif-output }}
       run: |
         set -o pipefail
-        IGNORE_FLAG=""
-        if [ -n "${{ inputs.skillguardignore }}" ]; then
-          IGNORE_FLAG="--skillguardignore ${{ inputs.skillguardignore }}"
+        IGNORE_FLAG=()
+        if [ -n "$INPUT_SKILLGUARDIGNORE" ]; then
+          IGNORE_FLAG=(--skillguardignore "$INPUT_SKILLGUARDIGNORE")
         fi
-        SUPPRESS_FLAG=""
-        if [ "${{ inputs.allow-inline-suppression }}" = "true" ]; then
-          SUPPRESS_FLAG="--allow-inline-suppression"
+        SUPPRESS_FLAG=()
+        if [ "$INPUT_ALLOW_INLINE_SUPPRESSION" = "true" ]; then
+          SUPPRESS_FLAG=(--allow-inline-suppression)
         fi
-        npx --yes skillguard-cli scan "${{ inputs.path }}" \
+        npx --yes skillguard-cli scan "$INPUT_PATH" \
           --format sarif \
-          --severity-threshold "${{ inputs.severity-threshold }}" \
-          --timeout "${{ inputs.timeout }}" \
-          $IGNORE_FLAG \
-          $SUPPRESS_FLAG \
-          > "${{ inputs.sarif-output }}"
+          --severity-threshold "$INPUT_SEVERITY_THRESHOLD" \
+          --timeout "$INPUT_TIMEOUT" \
+          "${IGNORE_FLAG[@]}" \
+          "${SUPPRESS_FLAG[@]}" \
+          > "$INPUT_SARIF_OUTPUT"
         echo "exit-code=$?" >> "$GITHUB_OUTPUT"
-        echo "sarif-file=${{ inputs.sarif-output }}" >> "$GITHUB_OUTPUT"
+        echo "sarif-file=$INPUT_SARIF_OUTPUT" >> "$GITHUB_OUTPUT"
 
     - name: Upload SARIF to GitHub code scanning
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@b7351df727350dca84cb9d725d57dcf5bc82ba26 # v3
       with:
         sarif_file: ${{ steps.scan.outputs.sarif-file }}
 
     - name: Gate on SkillGuard result
       shell: bash
+      env:
+        SCAN_EXIT_CODE: ${{ steps.scan.outputs.exit-code }}
       run: |
-        CODE="${{ steps.scan.outputs.exit-code }}"
-        if [ "$CODE" != "0" ]; then
-          echo "SkillGuard found findings at or above the configured severity threshold (exit code $CODE). See the Security tab for details."
-          exit "$CODE"
+        if [ "$SCAN_EXIT_CODE" != "0" ]; then
+          echo "SkillGuard found findings at or above the configured severity threshold (exit code $SCAN_EXIT_CODE). See the Security tab for details."
+          exit "$SCAN_EXIT_CODE"
         fi
