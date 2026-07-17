@@ -24,7 +24,7 @@ from .types import ScanOptions
 
 _SEVERITIES = ["HIGH", "MEDIUM", "LOW"]
 _FORMATS = ["human", "json", "sarif"]
-_VERSION = "0.1.0"
+_VERSION = "0.1.1"
 
 
 def _fail(what: str, why: str, fix: str) -> NoReturn:

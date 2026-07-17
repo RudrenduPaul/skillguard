@@ -32,7 +32,7 @@ def main() -> None:
         print(f"findings:      {len(result.findings)}")
 
         for finding in result.findings:
-            print(f"  [{finding.severity}] {finding.category} {finding.file}:{finding.line} — {finding.rule_id}")
+            print(f"  [{finding.severity}] {finding.category} {finding.file}:{finding.line} ({finding.rule_id})")
 
         print()
 

@@ -46,7 +46,7 @@ def main() -> int:
     )
     for finding in result.findings:
         print(
-            f"  [{finding.severity}] {finding.category} {finding.file}:{finding.line} — {finding.message}",
+            f"  [{finding.severity}] {finding.category} {finding.file}:{finding.line}: {finding.message}",
             file=sys.stderr,
         )
     return 1

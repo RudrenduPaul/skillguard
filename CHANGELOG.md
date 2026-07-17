@@ -6,12 +6,18 @@ both distributions -- the npm package (`skillguard-cli`, JS/TS) and the
 PyPI package (`skillguard-cli`, Python) -- since they ship the same rule
 packs and scan semantics; entries note which distribution they apply to.
 
-## [Python 0.1.0] - 2026-07-16
+## [Python 0.1.1] - 2026-07-16
 
-Initial release of the Python port, published to PyPI as `skillguard-cli`
-(`pip install skillguard-cli`). Complementary to, not a replacement for,
-the existing npm package -- both are first-class and maintained together.
-See `python/README.md` for Python-specific usage.
+Initial public release of the Python port, published to PyPI as
+`skillguard-cli` (`pip install skillguard-cli`). Complementary to, not a
+replacement for, the existing npm package -- both are first-class and
+maintained together. See `python/README.md` for Python-specific usage.
+
+0.1.1 follows 0.1.0 same-day: a post-publish dependency review tightened
+the `PyYAML` dependency to a pinned upper bound (`>=6.0,<7` instead of an
+open-ended `>=6.0`). 0.1.0 remains installable on PyPI but 0.1.1 is the
+version this changelog entry and `python/README.md` describe; install
+`skillguard-cli` (unpinned) to always get the latest.
 
 ### Added
 
