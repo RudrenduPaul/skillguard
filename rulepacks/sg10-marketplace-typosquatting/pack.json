@@ -1,0 +1,8 @@
+{
+  "name": "sg10-marketplace-typosquatting",
+  "version": "0.1.0",
+  "category": "SG10",
+  "minCoreVersion": "0.1.0",
+  "description": "Structural check: compares the scanned skill's own declared name (SKILL.md frontmatter) against known-names.json, a small bundled starter list of well-known package/tool names — not a live or comprehensive marketplace registry sync. A near-miss (edit distance 1-2, not an exact match) suggests the declared name may be typosquatting a popular tool. Intended to be extended over time; ships with an illustrative seed list only.",
+  "kind": "structural"
+}
