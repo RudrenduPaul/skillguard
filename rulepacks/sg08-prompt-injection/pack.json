@@ -1,0 +1,8 @@
+{
+  "name": "sg08-prompt-injection",
+  "version": "0.1.0",
+  "category": "SG08",
+  "minCoreVersion": "0.1.0",
+  "description": "Structural check: scans SKILL.md's markdown body (after any YAML frontmatter) for prompt-injection phrasing that tries to override the host agent's system prompt or hijack its tool routing, invisible/zero-width Unicode characters that hide text from human review, and suspiciously large base64-like blocks embedded in the instructional text (src/ast/prompt-injection-scan.ts). Heuristic, regex-based pattern matching against known phrasing and hiding techniques — not semantic or LLM-based analysis; see that module's header comment for the honest false-negative-rate note. A structural pack ships no Semgrep-style rules file — the detection logic ships in core since it needs a parsed view of SKILL.md's body text, not a single-file pattern match.",
+  "kind": "structural"
+}
