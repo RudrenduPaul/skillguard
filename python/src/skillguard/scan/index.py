@@ -17,11 +17,18 @@ Data flow (reproduced here for anyone reading this file first):
    +---+-----------------------------+
    v                                 v
  scan/semgrep_runner.py (SG01-06,  structural/frontmatter_behavior_diff.py
- partial SG05), per-file           (SG07: declared vs actual scope) and
- timeout enforced                  structural/typosquatting_check.py
+ partial SG05), per-file           (SG07: declared vs actual scope),
+ timeout enforced                  structural/prompt_injection_scan.py
+                                    (SG08: override phrasing / hidden
+                                    Unicode / encoded blocks in SKILL.md's
+                                    body text), and
+                                    structural/typosquatting_check.py
                                     (SG10: declared name vs
-                                    known-names.json), both read-only,
-                                    sharing one parse_frontmatter() call
+                                    known-names.json) -- all read-only,
+                                    sharing one SKILL.md read (SG07/SG10
+                                    also share one parse_frontmatter() call;
+                                    SG08 works from the raw content and
+                                    strips its own frontmatter internally)
    |                                 |
    +-----------------+---------------+
                       v
@@ -30,7 +37,13 @@ Data flow (reproduced here for anyone reading this file first):
                       v
              severity threshold -> exit code (0 clean / 1 fail / 2 error)
 
-Ported from src/scan/index.ts.
+Ported from src/scan/index.ts. NOTE: the TypeScript original moved its
+structural dispatch to a directory-discovered analyzer registry
+(src/scan/structural/index.ts); this Python port keeps the simpler,
+explicit per-category dispatch style (_find_structural_pack()) it already
+had for SG07/SG10 and extends it for SG08 rather than also porting that
+registry mechanism, since doing so is a larger architecture change than
+adding one new detection category.
 """
 from __future__ import annotations
 
@@ -44,6 +57,7 @@ from ..structural.frontmatter_behavior_diff import (
     infer_actual_behavior,
     parse_frontmatter,
 )
+from ..structural.prompt_injection_scan import scan_prompt_injection
 from ..structural.typosquatting_check import (
     find_typosquat_matches,
     load_known_names,
@@ -154,8 +168,9 @@ def scan_skill(target: str, options: Optional[ScanOptions] = None) -> ScanResult
     structural_findings: List[Finding] = []
     structural_warnings: List[ScanWarning] = []
     sg07_pack = _find_structural_pack("SG07")
+    sg08_pack = _find_structural_pack("SG08")
     sg10_pack = _find_structural_pack("SG10")
-    if (sg07_pack or sg10_pack) and walk_result.skill_md_path:
+    if (sg07_pack or sg08_pack or sg10_pack) and walk_result.skill_md_path:
         try:
             with open(walk_result.skill_md_path, "r", encoding="utf-8", errors="replace") as fh:
                 skill_md_content = fh.read()
@@ -167,7 +182,30 @@ def scan_skill(target: str, options: Optional[ScanOptions] = None) -> ScanResult
             # analyzer-registry architecture re-parses per analyzer module
             # instead, a deliberate trade-off of that plugin design --
             # Python's direct-dispatch scan pipeline doesn't have that
-            # constraint, so it shares the one parse).
+            # constraint, so it shares the one parse). SG08 doesn't need
+            # the parsed frontmatter at all -- it works from the raw
+            # content and strips its own frontmatter block internally
+            # (scan_prompt_injection()) -- so it runs unconditionally on
+            # `skill_md_content`, independent of whether `declared` parses.
+            if sg08_pack:
+                sg08_findings = scan_prompt_injection(skill_md_content)
+                if sg08_findings:
+                    rel_skill_md = os.path.relpath(walk_result.skill_md_path, abs_target).replace(
+                        os.sep, "/"
+                    )
+                    structural_findings.extend(
+                        Finding(
+                            rule_id=f.rule_id,
+                            category=f.category,
+                            severity=f.severity,
+                            message=f.message,
+                            file=rel_skill_md,
+                            line=f.line,
+                            snippet=f.snippet,
+                        )
+                        for f in sg08_findings
+                    )
+
             declared = parse_frontmatter(skill_md_content)
             if declared:
                 if sg07_pack:
@@ -211,11 +249,11 @@ def scan_skill(target: str, options: Optional[ScanOptions] = None) -> ScanResult
                 ScanWarning(
                     code="skill-md-unreadable",
                     message=format_what_why_fix(
-                        f'Could not read "{walk_result.skill_md_path}" for the SG07/SG10 '
+                        f'Could not read "{walk_result.skill_md_path}" for the SG07/SG08/SG10 '
                         "structural checks.",
                         str(err),
-                        "SG07/SG10 were skipped for this scan; the rest of the scan still ran. "
-                        "Check the file exists and is readable.",
+                        "SG07/SG08/SG10 were skipped for this scan; the rest of the scan still "
+                        "ran. Check the file exists and is readable.",
                     ),
                 )
             )

