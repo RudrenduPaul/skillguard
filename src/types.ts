@@ -82,6 +82,42 @@ export interface ScanOptions {
   clock?: () => number;
 }
 
+/**
+ * One skill's individual scan result within a `scanSkillSet()` run. Reuses
+ * the exact same `ScanResult` a standalone `scanSkill()` call would return
+ * for that same directory -- scanSkillSet() never duplicates the per-skill
+ * scan logic, only orchestrates it across a set (see src/scan/skill-set.ts).
+ */
+export interface SkillEntry {
+  /** The skill's own subdirectory name under the scanned targets directory. */
+  name: string;
+  /** Absolute path to the skill's own directory on disk. */
+  path: string;
+  /** The identical ScanResult scanSkill(path) would produce standalone. */
+  result: ScanResult;
+}
+
+/**
+ * Result of `scanSkillSet()` -- SkillGuard's cross-skill entry point. Scans
+ * every immediate subdirectory of `targetsDir` that looks like a skill
+ * (contains a SKILL.md) individually via the existing single-skill
+ * machinery, then layers a skill-set-level structural check (SG09 --
+ * cross-skill privilege chaining) on top. `findings` here holds only the
+ * skill-set-level findings (SG09); each skill's own per-skill findings live
+ * on `skills[].result.findings`, unchanged from what scanSkill() would
+ * report for that skill in isolation.
+ */
+export interface SkillSetScanResult {
+  targetsDir: string;
+  skills: SkillEntry[];
+  /** Skill-set-level findings only (currently just SG09). */
+  findings: Finding[];
+  warnings: ScanWarning[];
+  severityThreshold: Severity;
+  /** 0 = clean, 1 = finding(s) at/above threshold (per-skill or cross-skill), 2 = target/config error. */
+  exitCode: 0 | 1 | 2;
+}
+
 export const SEVERITY_ORDER: Record<Severity, number> = {
   LOW: 0,
   MEDIUM: 1,

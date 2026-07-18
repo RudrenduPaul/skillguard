@@ -30,7 +30,12 @@ import yaml
 from ..types import Finding
 from ..walker import ScannableFile
 
-_FRONTMATTER_RE = re.compile(r"^---\r?\n([\s\S]*?)\r?\n---")
+# Public (additive, no behavior change) so skillguard/scan/skill_set.py can
+# reuse the same frontmatter-block extraction for its own SG09
+# "sandbox: true" declaration check, without extending DeclaredScope's
+# locked shape below (test_frontmatter_behavior_diff.py asserts
+# parse_frontmatter()'s exact return value).
+FRONTMATTER_RE = re.compile(r"^---\r?\n([\s\S]*?)\r?\n---")
 _NAME_KEY_RE = re.compile(r"^name:[ \t]*(.+)$", re.MULTILINE)
 
 
@@ -51,7 +56,7 @@ def _line_number_at(content: str, index: int) -> int:
 
 
 def parse_frontmatter(skill_md_content: str) -> Optional[DeclaredScope]:
-    match = _FRONTMATTER_RE.match(skill_md_content)
+    match = FRONTMATTER_RE.match(skill_md_content)
     if not match:
         return None
 
@@ -70,7 +75,7 @@ def parse_frontmatter(skill_md_content: str) -> Optional[DeclaredScope]:
     raw_name = data.get("name")
     name = raw_name.strip() if isinstance(raw_name, str) and raw_name.strip() else None
 
-    # _FRONTMATTER_RE.match() anchors at the start of the string, so
+    # FRONTMATTER_RE.match() anchors at the start of the string, so
     # match.start() is always 0 -- the frontmatter block always begins at
     # the top of the file. The captured group's offset within the full match
     # is found once via find(), rather than re-deriving it from span math.

@@ -17,7 +17,7 @@ import json
 import re
 from typing import List
 
-from ..types import Finding, ScanResult, Severity
+from ..types import Finding, ScanResult, ScanWarning, Severity, SkillSetScanResult
 
 _SARIF_TOOL_NAME = "SkillGuard"
 _SARIF_TOOL_VERSION = "0.1.0"
@@ -212,3 +212,93 @@ def format_result(result: ScanResult, fmt: str) -> str:
     if fmt == "sarif":
         return format_sarif(result)
     return format_human(result)
+
+
+# scan_skill_set() rendering. Rather than a parallel human/json/sarif
+# formatter, a SkillSetScanResult is first flattened into a single ordinary
+# ScanResult -- each per-skill finding/timeout/unscanned-file path prefixed
+# with "<skillName>/" so it stays correctly relative to the skill-set's own
+# target directory, and each per-skill ScanWarning's message prefixed the
+# same way -- then handed to the exact same format_human/format_json/
+# format_sarif above. This is the only place scan_skill_set()'s output
+# touches this module: the three format functions themselves are
+# untouched, so the single-skill `scan` command's output is completely
+# unaffected by any of this. Ported from src/output/formatters.ts.
+
+_SKILL_SET_SUMMARY_WARNING_CODE = "skill-set-summary"
+
+
+def flatten_skill_set_result(result: SkillSetScanResult) -> ScanResult:
+    findings: List[Finding] = []
+    for skill in result.skills:
+        for f in skill.result.findings:
+            findings.append(
+                Finding(
+                    rule_id=f.rule_id,
+                    category=f.category,
+                    severity=f.severity,
+                    message=f.message,
+                    file=f"{skill.name}/{f.file}",
+                    line=f.line,
+                    snippet=f.snippet,
+                )
+            )
+    # Skill-set-level (SG09) findings already carry a "<skillName>/<file>"
+    # path (see skillguard/scan/skill_set.py), so they need no further
+    # prefixing.
+    findings.extend(result.findings)
+
+    timeouts = [f"{skill.name}/{file}" for skill in result.skills for file in skill.result.timeouts]
+    unscanned_files = [
+        f"{skill.name}/{file}" for skill in result.skills for file in skill.result.unscanned_files
+    ]
+
+    per_skill_warnings = [
+        ScanWarning(code=w.code, message=f"[{skill.name}] {w.message}")
+        for skill in result.skills
+        for w in skill.result.warnings
+    ]
+
+    if result.skills:
+        skill_names = ", ".join(s.name for s in result.skills)
+        summary_message = f"Skill set scan covered {len(result.skills)} skill(s): {skill_names}."
+    else:
+        summary_message = "Skill set scan covered 0 skills."
+    summary_warning = ScanWarning(code=_SKILL_SET_SUMMARY_WARNING_CODE, message=summary_message)
+
+    return ScanResult(
+        target=result.targets_dir,
+        findings=findings,
+        timeouts=timeouts,
+        unscanned_files=unscanned_files,
+        warnings=[summary_warning, *result.warnings, *per_skill_warnings],
+        files_scanned=sum(skill.result.files_scanned for skill in result.skills),
+        severity_threshold=result.severity_threshold,
+        exit_code=result.exit_code,
+    )
+
+
+def to_skill_set_json_output(result: SkillSetScanResult) -> dict:
+    output = to_json_output(flatten_skill_set_result(result))
+    output["skills"] = [s.name for s in result.skills]
+    return output
+
+
+def format_set_json(result: SkillSetScanResult) -> str:
+    return json.dumps(to_skill_set_json_output(result), indent=2)
+
+
+def format_set_human(result: SkillSetScanResult) -> str:
+    if result.skills:
+        header = f"Skills discovered: {len(result.skills)} ({', '.join(s.name for s in result.skills)})\n\n"
+    else:
+        header = "Skills discovered: 0\n\n"
+    return header + format_human(flatten_skill_set_result(result))
+
+
+def format_set_result(result: SkillSetScanResult, fmt: str) -> str:
+    if fmt == "json":
+        return format_set_json(result)
+    if fmt == "sarif":
+        return format_sarif(flatten_skill_set_result(result))
+    return format_set_human(result)

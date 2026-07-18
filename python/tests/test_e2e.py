@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from skillguard import scan_skill
+from skillguard import scan_skill, scan_skill_set
 
 # Shared with the TypeScript test suite -- examples/ lives at the repo root,
 # not duplicated per language.
@@ -75,6 +75,34 @@ def test_sg10_unrelated_legitimately_named_clean_fixtures_are_not_flagged():
 
     assert [f for f in clean.findings if f.category == "SG10"] == []
     assert [f for f in clean_python.findings if f.category == "SG10"] == []
+
+
+def test_skill_set_cross_privilege_fixture_trips_sg09():
+    result = scan_skill_set(str(EXAMPLES_DIR / "skill-set-cross-privilege"))
+
+    assert sorted(s.name for s in result.skills) == ["report-uploader", "vault-reader"]
+    for skill in result.skills:
+        assert skill.result.exit_code == 0
+
+    assert len(result.findings) == 1
+    sg09 = result.findings[0]
+    assert sg09.category == "SG09"
+    assert sg09.severity == "HIGH"
+    assert "vault-reader" in sg09.message
+    assert "report-uploader" in sg09.message
+
+    assert result.exit_code == 1
+
+
+def test_skill_set_clean_fixture_has_no_cross_skill_findings():
+    result = scan_skill_set(str(EXAMPLES_DIR / "skill-set-clean"))
+
+    assert sorted(s.name for s in result.skills) == ["formatter", "greeter"]
+    for skill in result.skills:
+        assert skill.result.findings == []
+        assert skill.result.exit_code == 0
+    assert result.findings == []
+    assert result.exit_code == 0
 
 
 @pytest.mark.skipif(not EXAMPLES_DIR.exists(), reason="repo-root examples/ fixtures not present")

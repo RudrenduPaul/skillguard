@@ -32,7 +32,14 @@ export interface DeclaredScope {
   nameLine: number | null;
 }
 
-const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---/;
+// Exported (additive, no behavior change) so src/scan/skill-set.ts can reuse
+// the same frontmatter-block extraction for its own SG09 "sandbox: true"
+// declaration check, without extending DeclaredScope below -- that shape is
+// locked to SG07/SG10's own consumers (frontmatter-behavior-diff.test.ts
+// asserts parseFrontmatter()'s exact return object via toEqual()), and a
+// per-skill execution-context flag is a different concern from declared
+// network/filesystem/name scope.
+export const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---/;
 const NAME_KEY_RE = /^name:[ \t]*(.+)$/m;
 
 function lineNumberAt(content: string, index: number): number {

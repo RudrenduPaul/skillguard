@@ -66,6 +66,47 @@ class ScanResult:
 
 
 @dataclass
+class SkillEntry:
+    """
+    One skill's individual scan result within a `scan_skill_set()` run.
+    Reuses the exact same `ScanResult` a standalone `scan_skill()` call
+    would return for that same directory -- scan_skill_set() never
+    duplicates the per-skill scan logic, only orchestrates it across a set
+    (see skillguard/scan/skill_set.py).
+    """
+
+    name: str
+    """The skill's own subdirectory name under the scanned targets directory."""
+    path: str
+    """Absolute path to the skill's own directory on disk."""
+    result: "ScanResult"
+    """The identical ScanResult scan_skill(path) would produce standalone."""
+
+
+@dataclass
+class SkillSetScanResult:
+    """
+    Result of `scan_skill_set()` -- SkillGuard's cross-skill entry point.
+    Scans every immediate subdirectory of `targets_dir` that looks like a
+    skill (contains a SKILL.md) individually via the existing single-skill
+    machinery, then layers a skill-set-level structural check (SG09 --
+    cross-skill privilege chaining) on top. `findings` here holds only the
+    skill-set-level findings (SG09); each skill's own per-skill findings
+    live on `skills[].result.findings`, unchanged from what scan_skill()
+    would report for that skill in isolation.
+    """
+
+    targets_dir: str
+    skills: List[SkillEntry]
+    findings: List[Finding]
+    """Skill-set-level findings only (currently just SG09)."""
+    warnings: List[ScanWarning]
+    severity_threshold: Severity
+    exit_code: int
+    """0 = clean, 1 = finding(s) at/above threshold (per-skill or cross-skill), 2 = target/config error."""
+
+
+@dataclass
 class ScanOptions:
     severity_threshold: Severity = "HIGH"
     """Minimum severity that causes a non-zero (1) exit code."""

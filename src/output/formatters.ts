@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Finding, ScanResult, Severity } from '../types';
+import type { Finding, OutputFormat, ScanResult, ScanWarning, Severity, SkillSetScanResult } from '../types';
 
 /**
  * Three output formats:
@@ -220,4 +220,91 @@ export function formatResult(result: ScanResult, format: 'human' | 'json' | 'sar
   if (format === 'json') return formatJson(result);
   if (format === 'sarif') return formatSarif(result);
   return formatHuman(result);
+}
+
+/*
+ * scanSkillSet() rendering. Rather than a parallel human/json/sarif
+ * formatter, a SkillSetScanResult is first flattened into a single ordinary
+ * ScanResult -- each per-skill finding/timeout/unscanned-file path prefixed
+ * with "<skillName>/" so it stays correctly relative to the skill-set's own
+ * target directory, and each per-skill ScanWarning's message prefixed the
+ * same way -- then handed to the exact same formatHuman/formatJson/
+ * formatSarif above. This is the only place scanSkillSet()'s output touches
+ * this module: the three format functions themselves are untouched, so the
+ * single-skill `scan` command's output is completely unaffected by any of
+ * this.
+ */
+
+const SKILL_SET_SUMMARY_WARNING_CODE = 'skill-set-summary';
+
+export function flattenSkillSetResult(result: SkillSetScanResult): ScanResult {
+  const findings: Finding[] = [
+    ...result.skills.flatMap((skill) =>
+      skill.result.findings.map((f) => ({ ...f, file: `${skill.name}/${f.file}` }))
+    ),
+    // Skill-set-level (SG09) findings already carry a "<skillName>/<file>"
+    // path (see src/scan/skill-set.ts), so they need no further prefixing.
+    ...result.findings,
+  ];
+
+  const timeouts = result.skills.flatMap((skill) =>
+    skill.result.timeouts.map((file) => `${skill.name}/${file}`)
+  );
+
+  const unscannedFiles = result.skills.flatMap((skill) =>
+    skill.result.unscannedFiles.map((file) => `${skill.name}/${file}`)
+  );
+
+  const perSkillWarnings: ScanWarning[] = result.skills.flatMap((skill) =>
+    skill.result.warnings.map((w) => ({ code: w.code, message: `[${skill.name}] ${w.message}` }))
+  );
+
+  const summaryWarning: ScanWarning = {
+    code: SKILL_SET_SUMMARY_WARNING_CODE,
+    message:
+      result.skills.length > 0
+        ? `Skill set scan covered ${result.skills.length} skill(s): ${result.skills.map((s) => s.name).join(', ')}.`
+        : 'Skill set scan covered 0 skills.',
+  };
+
+  return {
+    target: result.targetsDir,
+    findings,
+    timeouts,
+    unscannedFiles,
+    warnings: [summaryWarning, ...result.warnings, ...perSkillWarnings],
+    filesScanned: result.skills.reduce((sum, skill) => sum + skill.result.filesScanned, 0),
+    severityThreshold: result.severityThreshold,
+    exitCode: result.exitCode,
+  };
+}
+
+export const SkillSetJsonOutputSchema = JsonOutputSchema.extend({
+  skills: z.array(z.string()),
+});
+
+export type SkillSetJsonOutput = z.infer<typeof SkillSetJsonOutputSchema>;
+
+export function toSkillSetJsonOutput(result: SkillSetScanResult): SkillSetJsonOutput {
+  return {
+    ...toJsonOutput(flattenSkillSetResult(result)),
+    skills: result.skills.map((s) => s.name),
+  };
+}
+
+export function formatSetJson(result: SkillSetScanResult): string {
+  return JSON.stringify(toSkillSetJsonOutput(result), null, 2);
+}
+
+export function formatSetHuman(result: SkillSetScanResult): string {
+  const header = `Skills discovered: ${result.skills.length}${
+    result.skills.length > 0 ? ` (${result.skills.map((s) => s.name).join(', ')})` : ''
+  }\n\n`;
+  return header + formatHuman(flattenSkillSetResult(result));
+}
+
+export function formatSetResult(result: SkillSetScanResult, format: OutputFormat): string {
+  if (format === 'json') return formatSetJson(result);
+  if (format === 'sarif') return formatSarif(flattenSkillSetResult(result));
+  return formatSetHuman(result);
 }

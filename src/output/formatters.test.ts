@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { formatHuman, formatJson, formatSarif, JsonOutputSchema, toJsonOutput } from './formatters';
-import type { ScanResult } from '../types';
+import {
+  formatHuman,
+  formatJson,
+  formatSarif,
+  formatSetResult,
+  flattenSkillSetResult,
+  JsonOutputSchema,
+  SkillSetJsonOutputSchema,
+  toJsonOutput,
+  toSkillSetJsonOutput,
+} from './formatters';
+import type { ScanResult, SkillSetScanResult } from '../types';
 
 const SAMPLE_RESULT: ScanResult = {
   target: '/tmp/some-skill',
@@ -135,5 +145,124 @@ describe('output/formatters', () => {
     // not able to fake a second top-level report line.
     const lines = text.split('\n');
     expect(lines.filter((l) => l.trim() === 'No findings.')).toHaveLength(0);
+  });
+});
+
+const SAMPLE_SET_RESULT: SkillSetScanResult = {
+  targetsDir: '/tmp/some-skill-set',
+  skills: [
+    {
+      name: 'clean-skill',
+      path: '/tmp/some-skill-set/clean-skill',
+      result: {
+        target: '/tmp/some-skill-set/clean-skill',
+        findings: [],
+        timeouts: [],
+        unscannedFiles: [],
+        warnings: [],
+        filesScanned: 1,
+        severityThreshold: 'HIGH',
+        exitCode: 0,
+      },
+    },
+    {
+      name: 'noisy-skill',
+      path: '/tmp/some-skill-set/noisy-skill',
+      result: {
+        target: '/tmp/some-skill-set/noisy-skill',
+        findings: [
+          {
+            ruleId: 'sg01-raw-socket-python',
+            category: 'SG01',
+            severity: 'MEDIUM',
+            message: 'Raw socket creation.',
+            file: 'hooks/send.py',
+            line: 5,
+          },
+        ],
+        timeouts: [],
+        unscannedFiles: [],
+        warnings: [{ code: 'invalid-pack', message: 'WHAT: x\nWHY: y\nFIX: z' }],
+        filesScanned: 1,
+        severityThreshold: 'HIGH',
+        exitCode: 0,
+      },
+    },
+  ],
+  findings: [
+    {
+      ruleId: 'sg09-cross-skill-privilege-chaining',
+      category: 'SG09',
+      severity: 'HIGH',
+      message: 'Cross-skill privilege chaining: skill "fs-skill" ... skill "noisy-skill" ...',
+      file: 'fs-skill/hooks/read.sh',
+      line: 3,
+    },
+  ],
+  warnings: [],
+  severityThreshold: 'HIGH',
+  exitCode: 1,
+};
+
+describe('output/formatters skill-set rendering', () => {
+  it('flattenSkillSetResult() prefixes each per-skill finding path with its own skill name', () => {
+    const flattened = flattenSkillSetResult(SAMPLE_SET_RESULT);
+    expect(flattened.target).toBe('/tmp/some-skill-set');
+    expect(flattened.filesScanned).toBe(2);
+    expect(flattened.exitCode).toBe(1);
+
+    const noisyFinding = flattened.findings.find((f) => f.ruleId === 'sg01-raw-socket-python');
+    expect(noisyFinding?.file).toBe('noisy-skill/hooks/send.py');
+
+    // The skill-set-level SG09 finding already carries a "<skillName>/" path
+    // (produced by src/scan/skill-set.ts) and must not be double-prefixed.
+    const sg09Finding = flattened.findings.find((f) => f.category === 'SG09');
+    expect(sg09Finding?.file).toBe('fs-skill/hooks/read.sh');
+  });
+
+  it('flattenSkillSetResult() prefixes each per-skill warning message with its own skill name', () => {
+    const flattened = flattenSkillSetResult(SAMPLE_SET_RESULT);
+    const perSkillWarning = flattened.warnings.find((w) => w.code === 'invalid-pack');
+    expect(perSkillWarning?.message).toContain('[noisy-skill]');
+  });
+
+  it('flattenSkillSetResult() adds a summary warning naming every skill in the set', () => {
+    const flattened = flattenSkillSetResult(SAMPLE_SET_RESULT);
+    const summary = flattened.warnings.find((w) => w.code === 'skill-set-summary');
+    expect(summary?.message).toContain('clean-skill');
+    expect(summary?.message).toContain('noisy-skill');
+  });
+
+  it('formatSetResult() human format lists discovered skills and reuses formatHuman() for the body', () => {
+    const text = formatSetResult(SAMPLE_SET_RESULT, 'human');
+    expect(text).toContain('Skills discovered: 2 (clean-skill, noisy-skill)');
+    expect(text).toContain('[MEDIUM] SG01 noisy-skill/hooks/send.py:5');
+    expect(text).toContain('[HIGH] SG09 fs-skill/hooks/read.sh:3');
+    expect(text).toContain('exit code 1');
+  });
+
+  it('formatSetResult() json format includes the skills array plus the merged findings, and validates against SkillSetJsonOutputSchema', () => {
+    const json = formatSetResult(SAMPLE_SET_RESULT, 'json');
+    const parsed = JSON.parse(json);
+    expect(SkillSetJsonOutputSchema.safeParse(parsed).success).toBe(true);
+    expect(parsed.skills).toEqual(['clean-skill', 'noisy-skill']);
+    expect(parsed.findings).toHaveLength(2);
+    expect(parsed.summary).toEqual({ HIGH: 1, MEDIUM: 1, LOW: 0 });
+  });
+
+  it('toSkillSetJsonOutput() independently validates against SkillSetJsonOutputSchema', () => {
+    const output = toSkillSetJsonOutput(SAMPLE_SET_RESULT);
+    expect(() => SkillSetJsonOutputSchema.parse(output)).not.toThrow();
+  });
+
+  it('formatSetResult() sarif format produces a valid SARIF 2.1.0 document covering every skill plus the cross-skill finding', () => {
+    const sarif = JSON.parse(formatSetResult(SAMPLE_SET_RESULT, 'sarif'));
+    expect(sarif.version).toBe('2.1.0');
+    expect(sarif.runs[0].results).toHaveLength(2);
+    const sg09Result = sarif.runs[0].results.find(
+      (r: { ruleId: string }) => r.ruleId === 'sg09-cross-skill-privilege-chaining'
+    );
+    expect(sg09Result.level).toBe('error');
+    expect(sg09Result.locations[0].physicalLocation.artifactLocation.uri).toBe('fs-skill/hooks/read.sh');
   });
 });

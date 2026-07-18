@@ -18,8 +18,9 @@ import sys
 from typing import List, NoReturn
 
 from .errors import format_what_why_fix
-from .output.formatters import format_result
+from .output.formatters import format_result, format_set_result
 from .scan.index import scan_skill
+from .scan.skill_set import scan_skill_set
 from .types import ScanOptions
 
 _SEVERITIES = ["HIGH", "MEDIUM", "LOW"]
@@ -122,6 +123,49 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    scan_set_parser = subparsers.add_parser(
+        "scan-set",
+        help=(
+            "Scan a directory of skill subdirectories for cross-skill privilege "
+            "chaining (SG09), in addition to each skill's own findings"
+        ),
+    )
+    scan_set_parser.add_argument(
+        "dir",
+        help="path to a directory whose immediate children are each a skill directory (SKILL.md plus hooks/scripts)",
+    )
+    scan_set_parser.add_argument(
+        "-f", "--format", default="human", help="output format: human, json, or sarif"
+    )
+    scan_set_parser.add_argument(
+        "-s",
+        "--severity-threshold",
+        default="HIGH",
+        help="minimum severity that fails the scan (HIGH, MEDIUM, or LOW)",
+    )
+    scan_set_parser.add_argument(
+        "-t", "--timeout", default="10000", help="per-file scan timeout in milliseconds"
+    )
+    scan_set_parser.add_argument(
+        "--skillguardignore",
+        default=None,
+        help=(
+            "path to a .skillguardignore file, applied to every skill in the set "
+            "(must be explicit -- never auto-loaded from inside any scan target, "
+            "for security)"
+        ),
+    )
+    scan_set_parser.add_argument(
+        "--allow-inline-suppression",
+        action="store_true",
+        default=False,
+        help=(
+            'honor "# skillguard-ignore: SGxx" comments found inside the scanned '
+            "files themselves, for every skill in the set. Off by default -- only "
+            "enable this for a set you already trust."
+        ),
+    )
+
     return parser
 
 
@@ -150,7 +194,7 @@ def run_cli(argv: List[str]) -> int:
             )
         return 0
 
-    if args.command != "scan":
+    if args.command not in ("scan", "scan-set"):
         parser.print_help()
         return 0
 
@@ -164,16 +208,19 @@ def run_cli(argv: List[str]) -> int:
         # tell the user SkillGuard is working, not hung.
         sys.stderr.write("Loading SkillGuard rule packs...\n")
 
-    result = scan_skill(
-        args.path,
-        ScanOptions(
-            severity_threshold=severity_threshold,
-            timeout_ms=timeout_ms,
-            ignore_file_path=args.skillguardignore,
-            allow_inline_suppression=bool(args.allow_inline_suppression),
-        ),
+    options = ScanOptions(
+        severity_threshold=severity_threshold,
+        timeout_ms=timeout_ms,
+        ignore_file_path=args.skillguardignore,
+        allow_inline_suppression=bool(args.allow_inline_suppression),
     )
 
+    if args.command == "scan-set":
+        set_result = scan_skill_set(args.dir, options)
+        sys.stdout.write(format_set_result(set_result, fmt) + "\n")
+        return set_result.exit_code
+
+    result = scan_skill(args.path, options)
     sys.stdout.write(format_result(result, fmt) + "\n")
     return result.exit_code
 

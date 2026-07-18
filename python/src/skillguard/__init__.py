@@ -14,11 +14,21 @@ is a thin argument-parsing wrapper over this function.
 
 This is the Python port of the skillguard-cli npm package
 (https://www.npmjs.com/package/skillguard-cli). Both distributions ship the
-same seven bundled rule packs (SG01 through SG07) and read the same
-rule-pack contract; see https://github.com/RudrenduPaul/skillguard for the
-canonical documentation, benchmarks, and the original TypeScript source.
+same bundled rule packs and read the same rule-pack contract; see
+https://github.com/RudrenduPaul/skillguard for the canonical
+documentation, benchmarks, and the original TypeScript source.
+
+Additive alongside scan_skill(): scan_skill_set() scans a directory whose
+immediate children are each a skill directory (a marketplace bundle, a
+project's .claude/skills/ folder, etc.) and layers a skill-set-level
+structural check (SG09 -- cross-skill privilege chaining) on top of each
+skill's own scan_skill()-equivalent result.
+
+    from skillguard import scan_skill_set
+    set_result = scan_skill_set("./my-skills-dir")
 """
 from .scan.index import scan_skill
+from .scan.skill_set import compute_cross_skill_findings, discover_skill_dirs, scan_skill_set
 from .types import (
     Finding,
     OutputFormat,
@@ -27,12 +37,17 @@ from .types import (
     ScanResult,
     ScanWarning,
     Severity,
+    SkillEntry,
+    SkillSetScanResult,
 )
 
 __version__ = "0.2.0"
 
 __all__ = [
     "scan_skill",
+    "scan_skill_set",
+    "discover_skill_dirs",
+    "compute_cross_skill_findings",
     "Finding",
     "ScanOptions",
     "ScanResult",
@@ -40,5 +55,7 @@ __all__ = [
     "Severity",
     "OutputFormat",
     "RuleCategory",
+    "SkillEntry",
+    "SkillSetScanResult",
     "__version__",
 ]

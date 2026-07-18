@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { scanSkill } from './scan/index';
-import { formatResult } from './output/formatters';
+import { scanSkillSet } from './scan/skill-set';
+import { formatResult, formatSetResult } from './output/formatters';
 import type { OutputFormat, Severity } from './types';
 import { formatWhatWhyFix } from './errors';
 import { runMcpServer } from './mcp/server';
@@ -115,6 +116,45 @@ export async function runCli(argv: string[]): Promise<number> {
     )
     .action(async () => {
       await runMcpServer();
+    });
+
+  program
+    .command('scan-set')
+    .description(
+      'Scan a directory of skill subdirectories for cross-skill privilege chaining (SG09), in addition to each skill\'s own findings'
+    )
+    .argument('<dir>', 'path to a directory whose immediate children are each a skill directory (SKILL.md plus hooks/scripts)')
+    .option('-f, --format <format>', 'output format: human, json, or sarif', 'human')
+    .option(
+      '-s, --severity-threshold <severity>',
+      'minimum severity that fails the scan (HIGH, MEDIUM, or LOW)',
+      'HIGH'
+    )
+    .option('-t, --timeout <ms>', 'per-file scan timeout in milliseconds', '10000')
+    .option('--skillguardignore <path>', 'path to a .skillguardignore file, applied to every skill in the set (must be explicit -- never auto-loaded from inside any scan target, for security)')
+    .option(
+      '--allow-inline-suppression',
+      'honor "# skillguard-ignore: SGxx" comments found inside the scanned files themselves, for every skill in the set. Off by default -- only enable this for a set you already trust.',
+      false
+    )
+    .action(async (targetsDir: string, opts) => {
+      const format = parseFormat(opts.format);
+      const severityThreshold = parseSeverity(opts.severityThreshold);
+      const timeoutMs = parseTimeout(opts.timeout);
+
+      if (format !== 'json') {
+        process.stderr.write('Loading SkillGuard rule packs...\n');
+      }
+
+      const result = await scanSkillSet(targetsDir, {
+        severityThreshold,
+        timeoutMs,
+        ignoreFilePath: opts.skillguardignore,
+        allowInlineSuppression: Boolean(opts.allowInlineSuppression),
+      });
+
+      process.stdout.write(formatSetResult(result, format) + '\n');
+      exitCode = result.exitCode;
     });
 
   await program.parseAsync(argv);
