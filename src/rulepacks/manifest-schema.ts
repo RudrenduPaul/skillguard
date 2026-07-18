@@ -17,9 +17,12 @@ export const PackManifestSchema = z
   .object({
     name: z.string().min(1, 'name must be a non-empty string'),
     version: z.string().regex(SEMVER_RE, 'version must be semver, e.g. "0.1.0"'),
-    category: z.enum(['SG01', 'SG02', 'SG03', 'SG04', 'SG05', 'SG06', 'SG07'], {
-      errorMap: () => ({ message: 'category must be one of SG01..SG07' }),
-    }),
+    category: z.enum(
+      ['SG01', 'SG02', 'SG03', 'SG04', 'SG05', 'SG06', 'SG07', 'SG08', 'SG09', 'SG10'],
+      {
+        errorMap: () => ({ message: 'category must be one of SG01..SG10' }),
+      }
+    ),
     minCoreVersion: z.string().regex(SEMVER_RE, 'minCoreVersion must be semver, e.g. "0.1.0"'),
     description: z.string().min(1, 'description must be a non-empty string'),
     kind: z.enum(['pattern', 'structural']).default('pattern'),

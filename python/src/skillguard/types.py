@@ -17,8 +17,10 @@ from typing import Callable, List, Literal, Optional
 Severity = Literal["HIGH", "MEDIUM", "LOW"]
 OutputFormat = Literal["human", "json", "sarif"]
 
-# SG01 through SG07 -- see rulepacks/data/ for the corresponding rule packs.
-RuleCategory = Literal["SG01", "SG02", "SG03", "SG04", "SG05", "SG06", "SG07"]
+# SG01 through SG10 -- see rulepacks/data/ for the corresponding rule packs.
+RuleCategory = Literal[
+    "SG01", "SG02", "SG03", "SG04", "SG05", "SG06", "SG07", "SG08", "SG09", "SG10"
+]
 
 SEVERITY_ORDER = {"LOW": 0, "MEDIUM": 1, "HIGH": 2}
 

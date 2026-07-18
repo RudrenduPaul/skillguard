@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional
 
 _SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
-VALID_CATEGORIES = {"SG01", "SG02", "SG03", "SG04", "SG05", "SG06", "SG07"}
+VALID_CATEGORIES = {"SG01", "SG02", "SG03", "SG04", "SG05", "SG06", "SG07", "SG08", "SG09", "SG10"}
 VALID_SEVERITIES = {"HIGH", "MEDIUM", "LOW"}
 VALID_LANGUAGES = {"javascript", "typescript", "python", "shell"}
 VALID_KINDS = {"pattern", "structural"}
@@ -57,7 +57,7 @@ def parse_pack_manifest(raw: Dict[str, Any]) -> PackManifest:
 
     category = raw.get("category")
     if category not in VALID_CATEGORIES:
-        issues.append("category: category must be one of SG01..SG07")
+        issues.append("category: category must be one of SG01..SG10")
 
     min_core_version = raw.get("minCoreVersion")
     if not isinstance(min_core_version, str) or not _SEMVER_RE.match(min_core_version):

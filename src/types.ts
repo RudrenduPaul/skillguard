@@ -7,7 +7,7 @@ export type Severity = 'HIGH' | 'MEDIUM' | 'LOW';
 
 export type OutputFormat = 'human' | 'json' | 'sarif';
 
-/** SG01 through SG07 — see rulepacks/ for the corresponding rule packs. */
+/** SG01 through SG10 — see rulepacks/ for the corresponding rule packs. */
 export type RuleCategory =
   | 'SG01'
   | 'SG02'
@@ -15,7 +15,10 @@ export type RuleCategory =
   | 'SG04'
   | 'SG05'
   | 'SG06'
-  | 'SG07';
+  | 'SG07'
+  | 'SG08'
+  | 'SG09'
+  | 'SG10';
 
 export interface Finding {
   /** e.g. "sg02-curl-pipe-bash" */
