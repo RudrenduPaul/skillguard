@@ -24,7 +24,7 @@ from .types import ScanOptions
 
 _SEVERITIES = ["HIGH", "MEDIUM", "LOW"]
 _FORMATS = ["human", "json", "sarif"]
-_VERSION = "0.1.1"
+_VERSION = "0.2.0"
 
 
 def _fail(what: str, why: str, fix: str) -> NoReturn:
@@ -112,6 +112,16 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    subparsers.add_parser(
+        "mcp",
+        help=(
+            "Start SkillGuard as an MCP (Model Context Protocol) server on stdio, exposing "
+            "a scan_skill tool so another agent can call SkillGuard directly instead of "
+            "shelling out to this CLI. Requires the optional `mcp` extra -- see "
+            "docs/integrations/mcp.md."
+        ),
+    )
+
     return parser
 
 
@@ -125,6 +135,20 @@ def run_cli(argv: List[str]) -> int:
     """
     parser = build_parser()
     args = parser.parse_args(argv[1:])
+
+    if args.command == "mcp":
+        from .mcp_server import run_mcp_server
+
+        try:
+            run_mcp_server()
+        except ImportError as err:
+            _fail(
+                "`skillguard mcp` requires the optional `mcp` dependency, which is not installed.",
+                str(err),
+                'Install it with: pip install "skillguard-cli[mcp]" (requires Python >=3.10), '
+                "then rerun `skillguard mcp`.",
+            )
+        return 0
 
     if args.command != "scan":
         parser.print_help()

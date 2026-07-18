@@ -4,6 +4,7 @@ import { scanSkill } from './scan/index';
 import { formatResult } from './output/formatters';
 import type { OutputFormat, Severity } from './types';
 import { formatWhatWhyFix } from './errors';
+import { runMcpServer } from './mcp/server';
 
 /*
  * Thin argument-parsing wrapper over src/scan/index.ts (see that file for the
@@ -61,7 +62,7 @@ export async function runCli(argv: string[]): Promise<number> {
     .description(
       'Security scanner for third-party AI agent-skill files: SKILL.md manifests, hooks, and bundled scripts.'
     )
-    .version('0.1.0');
+    .version('0.2.0');
 
   let exitCode = 0;
 
@@ -105,13 +106,35 @@ export async function runCli(argv: string[]): Promise<number> {
       exitCode = result.exitCode;
     });
 
+  program
+    .command('mcp')
+    .description(
+      'Start SkillGuard as an MCP (Model Context Protocol) server on stdio, exposing a ' +
+        'scan_skill tool so another agent can call SkillGuard directly instead of shelling ' +
+        'out to this CLI. See docs/integrations/mcp.md for client setup.'
+    )
+    .action(async () => {
+      await runMcpServer();
+    });
+
   await program.parseAsync(argv);
   return exitCode;
 }
 
 if (require.main === module) {
+  // `mcp` starts a long-running stdio server (see src/mcp/server.ts):
+  // runMcpServer()'s action only resolves once the client disconnects
+  // (stdin closes), at which point Node exits naturally on its own -- no
+  // explicit process.exit() call needed, or wanted: calling process.exit()
+  // here as soon as runCli()'s promise resolves would work fine for the
+  // one-shot `scan` subcommand, but would forcibly kill the `mcp`
+  // subcommand's server the instant its action fires, before it ever serves
+  // a single tool call.
+  const isMcpMode = process.argv[2] === 'mcp';
   runCli(process.argv).then(
-    (code) => process.exit(code),
+    (code) => {
+      if (!isMcpMode) process.exit(code);
+    },
     (err) => {
       process.stderr.write(
         formatWhatWhyFix(

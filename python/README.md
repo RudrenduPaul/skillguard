@@ -89,6 +89,35 @@ if result.exit_code == 1:
         print(f"[{finding.severity}] {finding.category} {finding.file}:{finding.line} — {finding.message}")
 ```
 
+## MCP server (agent-native, tool-call)
+
+```bash
+pip install "skillguard-cli[mcp]"   # optional extra, requires Python >=3.10
+skillguard mcp
+```
+
+Starts SkillGuard as a stdio MCP server exposing one tool, `scan_skill`
+(`{ path, severity_threshold?, timeout_ms? }`), so another agent -- Claude
+Code, Cursor, an orchestrator -- can scan a third-party skill directly as a
+tool call before installing or running it, instead of shelling out to the
+CLI and parsing stdout. The `mcp` extra is optional and not required for
+the base `pip install skillguard-cli` install (the official `mcp` SDK
+needs Python >=3.10; the base package still supports >=3.9). Client config
+example:
+
+```json
+{ "mcpServers": { "skillguard": { "command": "skillguard", "args": ["mcp"] } } }
+```
+
+Full setup and the security guarantees this path preserves (same
+`.skillguardignore`/inline-suppression defaults as the CLI) are in
+[docs/integrations/mcp.md](https://github.com/RudrenduPaul/skillguard/blob/main/docs/integrations/mcp.md).
+The npm package ships the same capability (`npx skillguard-cli mcp`,
+tool input `{ path, severityThreshold?, timeoutMs? }` -- camelCase to match
+that package's own option naming); both distributions expose the identical
+`scan_skill` tool, reusing the same `scan_skill()`/`scanSkill()` pipeline
+their own CLIs use.
+
 ## How it works
 
 ```

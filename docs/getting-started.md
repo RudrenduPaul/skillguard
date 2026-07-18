@@ -129,5 +129,8 @@ see [concepts.md](./concepts.md) for the full data model.
 - [integrations/ci.md](./integrations/ci.md) -- wiring SkillGuard into a CI
   pipeline (GitHub Action for the npm CLI, a plain CI step for the Python
   CLI).
+- [integrations/mcp.md](./integrations/mcp.md) -- running `skillguard-cli
+  mcp` so another agent can call SkillGuard directly as a tool, before
+  installing or running a third-party skill.
 - The [project README](../README.md) for the full tool comparison and
   benchmark numbers.

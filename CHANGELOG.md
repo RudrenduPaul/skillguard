@@ -6,6 +6,82 @@ both distributions -- the npm package (`skillguard-cli`, JS/TS) and the
 PyPI package (`skillguard-cli`, Python) -- since they ship the same rule
 packs and scan semantics; entries note which distribution they apply to.
 
+## [0.2.0] - 2026-07-18
+
+npm package. Adds an agent-native MCP (Model Context Protocol) server
+mode: `npx skillguard-cli mcp` starts a stdio-transport MCP server exposing
+one tool, `scan_skill` (`{ path, severityThreshold?, timeoutMs? }`), so
+another agent (Claude Code, Cursor, an orchestrator) can scan a third-party
+skill directly as a tool call before installing or running it, instead of
+shelling out to the CLI and parsing stdout. Built on the official
+`@modelcontextprotocol/sdk` (pinned `1.29.0`); reuses `scanSkill()` and the
+existing JSON formatter directly, so behavior and the returned `ScanResult`
+shape are identical to `skillguard-cli scan --format json`. See the
+"Python 0.2.0" entry below for the equivalent Python addition, shipped the
+same day.
+
+### Added
+
+- `src/mcp/server.ts`: `createServer()` builds the MCP server and registers
+  `scan_skill`; `runMcpServer()` connects it over stdio.
+- `skillguard-cli mcp` CLI subcommand (`src/cli.ts`) to launch the server.
+- [docs/integrations/mcp.md](docs/integrations/mcp.md): client setup
+  (Claude Code / generic MCP client JSON), the tool's input/output schema,
+  and the security guarantees this path preserves.
+
+### Security
+
+- The tool's input schema exposes only `path`, `severityThreshold`, and
+  `timeoutMs` -- there is no `ignoreFilePath` or `allowInlineSuppression`
+  field, so every MCP-triggered scan runs with `scanSkill()`'s safest
+  defaults: zero path suppressions and inline suppression comments never
+  honored, same as calling the library with neither option set. See the
+  SECURITY comment in `src/scan/index.ts`.
+- Unlike the one-shot CLI, invalid tool arguments (a bad
+  `severityThreshold`/`timeoutMs`) return a structured `isError: true` tool
+  result for that call only -- they never crash the long-running server
+  process out from under other in-flight or future calls.
+
+### Dependency
+
+- Bumped `zod` from `3.23.8` to `3.25.76` to satisfy
+  `@modelcontextprotocol/sdk`'s peer dependency range (`^3.25 || ^4.0`) with
+  a single deduplicated `zod` install rather than a duplicate `zod@4` tree.
+
+## [Python 0.2.0] - 2026-07-18
+
+Adds the equivalent agent-native MCP server mode to the Python package:
+`skillguard mcp` starts a stdio-transport MCP server exposing the same
+`scan_skill` tool (`{ path, severity_threshold?, timeout_ms? }` --
+snake_case, matching this package's own `ScanOptions` naming). Built on the
+official `mcp` Python SDK as a new **optional** extra
+(`pip install "skillguard-cli[mcp]"`, `mcp>=1.28,<2`) rather than a hard
+dependency, since the `mcp` SDK requires Python >=3.10 while the base
+`skillguard-cli` package continues to support >=3.9 and most installs never
+use MCP mode. Running `skillguard mcp` without the extra installed fails
+with a WHAT/WHY/FIX message instead of a bare import traceback.
+
+### Added
+
+- `skillguard/mcp_server.py`: `create_server()` builds the MCP server (via
+  `mcp.server.fastmcp.FastMCP`) and registers `scan_skill`;
+  `run_mcp_server()` runs it over stdio.
+- `skillguard mcp` CLI subcommand (`skillguard/cli.py`).
+- `[project.optional-dependencies] mcp` extra in `pyproject.toml`.
+- Tests in `tests/test_mcp_server.py`, run in-process via the `mcp` SDK's
+  own `create_connected_server_and_client_session` test helper; skipped
+  cleanly (via `pytest.importorskip`) when the `mcp` extra isn't installed.
+
+### Security
+
+- Same guarantees as the npm package's MCP mode (see `[0.2.0]` above):
+  the tool's input schema exposes only `path`, `severity_threshold`, and
+  `timeout_ms`, so every MCP-triggered scan runs with `scan_skill()`'s
+  safest defaults (no `.skillguardignore`, inline suppression never
+  honored). Invalid arguments raise inside the tool function, which the
+  `mcp` SDK converts into a structured `isError: true` result for that
+  call only -- the long-running server keeps serving subsequent calls.
+
 ## [Python 0.1.2] - 2026-07-17
 
 Metadata-only release. Added Sourav Nandy as a listed co-author in

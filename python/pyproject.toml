@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "skillguard-cli"
-version = "0.1.2"
+version = "0.2.0"
 description = "Security scanner for third-party AI agent-skill files: SKILL.md manifests, hooks, and bundled scripts."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -38,6 +38,13 @@ dev = [
   "pytest>=7.0,<9",
   "build>=1.0,<2",
   "twine>=5.0,<7",
+]
+# Agent-native MCP server mode (`skillguard mcp`). Not a hard dependency:
+# the official `mcp` SDK requires Python >=3.10, while this package's base
+# install supports >=3.9, and most installs never use MCP mode. Install
+# with `pip install "skillguard-cli[mcp]"` -- see docs/integrations/mcp.md.
+mcp = [
+  "mcp>=1.28,<2",
 ]
 
 [project.urls]

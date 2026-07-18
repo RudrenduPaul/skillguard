@@ -201,6 +201,26 @@ if (result.exitCode === 1) {
 `ScanResult` (findings, timeouts, warnings, exit code), useful for agent
 frameworks that want to call SkillGuard in-process instead of shelling out.
 
+## MCP server (agent-native, tool-call)
+
+```bash
+npx skillguard-cli mcp
+```
+
+Starts SkillGuard as a stdio MCP server exposing one tool, `scan_skill`
+(`{ path, severityThreshold?, timeoutMs? }`), so another agent -- Claude
+Code, Cursor, an orchestrator -- can scan a third-party skill directly as a
+tool call before installing or running it, instead of shelling out to the
+CLI and parsing stdout. Client config example:
+
+```json
+{ "mcpServers": { "skillguard": { "command": "npx", "args": ["skillguard-cli", "mcp"] } } }
+```
+
+Full setup, the tool's input/output schema, and the security guarantees this
+path preserves (same `.skillguardignore`/inline-suppression defaults as the
+CLI) are in [docs/integrations/mcp.md](./docs/integrations/mcp.md).
+
 ## GitHub Action
 
 ```yaml
