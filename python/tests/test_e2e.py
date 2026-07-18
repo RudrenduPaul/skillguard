@@ -48,6 +48,35 @@ def test_known_bad_skill_trips_multiple_distinct_rule_categories():
     assert len(categories) >= 3
 
 
+def test_sg10_typosquat_skill_fixture_is_flagged_high_exit_1():
+    result = scan_skill(str(EXAMPLES_DIR / "typosquat-skill"))
+
+    assert result.exit_code == 1
+    sg10_findings = [f for f in result.findings if f.category == "SG10"]
+    assert len(sg10_findings) == 1
+    assert sg10_findings[0].rule_id == "sg10-typosquat-suspected"
+    assert sg10_findings[0].severity == "HIGH"
+    assert sg10_findings[0].file == "SKILL.md"
+    assert sg10_findings[0].line > 0
+    assert "numpi" in sg10_findings[0].message
+    assert "numpy" in sg10_findings[0].message
+
+
+def test_sg10_known_name_legit_skill_fixture_is_not_flagged_exit_0():
+    result = scan_skill(str(EXAMPLES_DIR / "known-name-legit-skill"))
+
+    assert result.exit_code == 0
+    assert result.findings == []
+
+
+def test_sg10_unrelated_legitimately_named_clean_fixtures_are_not_flagged():
+    clean = scan_skill(str(EXAMPLES_DIR / "clean-skill"))
+    clean_python = scan_skill(str(EXAMPLES_DIR / "clean-skill-python"))
+
+    assert [f for f in clean.findings if f.category == "SG10"] == []
+    assert [f for f in clean_python.findings if f.category == "SG10"] == []
+
+
 @pytest.mark.skipif(not EXAMPLES_DIR.exists(), reason="repo-root examples/ fixtures not present")
 def test_examples_dir_exists():
     assert EXAMPLES_DIR.exists()

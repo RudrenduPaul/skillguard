@@ -31,12 +31,23 @@ from ..types import Finding
 from ..walker import ScannableFile
 
 _FRONTMATTER_RE = re.compile(r"^---\r?\n([\s\S]*?)\r?\n---")
+_NAME_KEY_RE = re.compile(r"^name:[ \t]*(.+)$", re.MULTILINE)
 
 
 @dataclass
 class DeclaredScope:
     network: bool
     filesystem_write: bool
+    name: Optional[str] = None
+    """The frontmatter's declared `name:` field, trimmed, or None if absent/blank.
+    Consumed by SG10 (structural/typosquatting_check.py) in addition to SG07."""
+    name_line: Optional[int] = None
+    """1-indexed line of the `name:` key within skill_md_content, or None if
+    there's no name field. Lets SG10 cite a real file:line for its finding."""
+
+
+def _line_number_at(content: str, index: int) -> int:
+    return 1 + content.count("\n", 0, index)
 
 
 def parse_frontmatter(skill_md_content: str) -> Optional[DeclaredScope]:
@@ -56,7 +67,24 @@ def parse_frontmatter(skill_md_content: str) -> Optional[DeclaredScope]:
     filesystem = data.get("filesystem") if isinstance(data.get("filesystem"), str) else "none"
     filesystem_write = filesystem == "read-write"
 
-    return DeclaredScope(network=network, filesystem_write=filesystem_write)
+    raw_name = data.get("name")
+    name = raw_name.strip() if isinstance(raw_name, str) and raw_name.strip() else None
+
+    # _FRONTMATTER_RE.match() anchors at the start of the string, so
+    # match.start() is always 0 -- the frontmatter block always begins at
+    # the top of the file. The captured group's offset within the full match
+    # is found once via find(), rather than re-deriving it from span math.
+    name_line: Optional[int] = None
+    if name is not None:
+        block = match.group(1)
+        name_key_match = _NAME_KEY_RE.search(block)
+        if name_key_match:
+            block_offset = match.group(0).find(block)
+            name_line = _line_number_at(skill_md_content, block_offset + name_key_match.start())
+
+    return DeclaredScope(
+        network=network, filesystem_write=filesystem_write, name=name, name_line=name_line
+    )
 
 
 _NETWORK_EVIDENCE_RE = re.compile(
@@ -89,8 +117,7 @@ def _first_match_line(content: str, pattern: "re.Pattern[str]") -> Optional[int]
     match = pattern.search(content)
     if not match:
         return None
-    line = 1 + content.count("\n", 0, match.start())
-    return line
+    return _line_number_at(content, match.start())
 
 
 def infer_actual_behavior(scripts: List[ScannableFile]) -> BehaviorEvidence:

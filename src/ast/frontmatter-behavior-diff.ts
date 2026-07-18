@@ -26,9 +26,22 @@ import * as fs from 'node:fs';
 export interface DeclaredScope {
   network: boolean;
   filesystemWrite: boolean;
+  /** The frontmatter's declared `name:` field, trimmed, or null if absent/blank. Consumed by SG10 (typosquatting-check.ts) in addition to SG07. */
+  name: string | null;
+  /** 1-indexed line of the `name:` key within skillMdContent, or null if there's no name field. Lets SG10 cite a real file:line for its finding. */
+  nameLine: number | null;
 }
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---/;
+const NAME_KEY_RE = /^name:[ \t]*(.+)$/m;
+
+function lineNumberAt(content: string, index: number): number {
+  let line = 1;
+  for (let i = 0; i < index; i++) {
+    if (content.charCodeAt(i) === 10) line++;
+  }
+  return line;
+}
 
 export function parseFrontmatter(skillMdContent: string): DeclaredScope | null {
   const match = FRONTMATTER_RE.exec(skillMdContent);
@@ -48,7 +61,24 @@ export function parseFrontmatter(skillMdContent: string): DeclaredScope | null {
   const filesystem = typeof record.filesystem === 'string' ? record.filesystem : 'none';
   const filesystemWrite = filesystem === 'read-write';
 
-  return { network, filesystemWrite };
+  const name =
+    typeof record.name === 'string' && record.name.trim().length > 0 ? record.name.trim() : null;
+
+  // FRONTMATTER_RE is anchored with ^ (no /m flag), so match.index is always
+  // 0 -- the frontmatter block always starts at the top of the file. That
+  // means the block's captured group (match[1]) begins at a fixed offset
+  // within match[0], found once via indexOf, rather than needing a second
+  // regex exec with capture-group index tracking.
+  let nameLine: number | null = null;
+  if (name !== null) {
+    const nameKeyMatch = NAME_KEY_RE.exec(match[1]);
+    if (nameKeyMatch) {
+      const blockOffset = match[0].indexOf(match[1]);
+      nameLine = lineNumberAt(skillMdContent, blockOffset + nameKeyMatch.index);
+    }
+  }
+
+  return { network, filesystemWrite, name, nameLine };
 }
 
 const NETWORK_EVIDENCE_RE =
@@ -67,11 +97,7 @@ export interface BehaviorEvidence {
 function firstMatchLine(content: string, re: RegExp): number | null {
   const match = re.exec(content);
   if (!match) return null;
-  let line = 1;
-  for (let i = 0; i < match.index; i++) {
-    if (content.charCodeAt(i) === 10) line++;
-  }
-  return line;
+  return lineNumberAt(content, match.index);
 }
 
 export function inferActualBehavior(scripts: ScannableFile[]): BehaviorEvidence {

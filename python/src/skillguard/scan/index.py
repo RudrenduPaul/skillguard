@@ -17,8 +17,11 @@ Data flow (reproduced here for anyone reading this file first):
    +---+-----------------------------+
    v                                 v
  scan/semgrep_runner.py (SG01-06,  structural/frontmatter_behavior_diff.py
- partial SG05), per-file           (SG07: declared vs actual scope,
- timeout enforced                  read-only)
+ partial SG05), per-file           (SG07: declared vs actual scope) and
+ timeout enforced                  structural/typosquatting_check.py
+                                    (SG10: declared name vs
+                                    known-names.json), both read-only,
+                                    sharing one parse_frontmatter() call
    |                                 |
    +-----------------+---------------+
                       v
@@ -35,11 +38,16 @@ import os
 from typing import Dict, List, Optional
 
 from ..errors import format_what_why_fix
-from ..rulepacks.loader import CORE_VERSION, load_rule_packs
+from ..rulepacks.loader import CORE_VERSION, LoadedPack, load_rule_packs
 from ..structural.frontmatter_behavior_diff import (
     diff_frontmatter_behavior,
     infer_actual_behavior,
     parse_frontmatter,
+)
+from ..structural.typosquatting_check import (
+    find_typosquat_matches,
+    load_known_names,
+    parse_declared_name,
 )
 from ..suppress.skillguardignore import IgnoreFileResult, is_inline_suppressed, load_ignore_file
 from ..types import Finding, ScanOptions, ScanResult, ScanWarning, meets_threshold
@@ -132,28 +140,81 @@ def scan_skill(target: str, options: Optional[ScanOptions] = None) -> ScanResult
     compiled_rules = compile_rules(pattern_packs)
     run_result = run_rules(walk_result.files, compiled_rules, timeout_ms, options.clock)
 
+    def _find_structural_pack(category: str) -> Optional[LoadedPack]:
+        # Finds the loaded structural pack for a category, or None if that
+        # pack wasn't loaded (missing/invalid pack.json, minCoreVersion
+        # mismatch, etc. -- see load_rule_packs). Generalizes what was a
+        # one-off SG07 boolean check so SG10 can share it instead of
+        # duplicating the same `any(...)`.
+        for p in packs_result.packs:
+            if p.manifest.category == category and p.manifest.kind == "structural":
+                return p
+        return None
+
     structural_findings: List[Finding] = []
     structural_warnings: List[ScanWarning] = []
-    has_structural_sg07 = any(
-        p.manifest.category == "SG07" and p.manifest.kind == "structural" for p in packs_result.packs
-    )
-    if has_structural_sg07 and walk_result.skill_md_path:
+    sg07_pack = _find_structural_pack("SG07")
+    sg10_pack = _find_structural_pack("SG10")
+    if (sg07_pack or sg10_pack) and walk_result.skill_md_path:
         try:
             with open(walk_result.skill_md_path, "r", encoding="utf-8", errors="replace") as fh:
                 skill_md_content = fh.read()
+            # Parsed once, shared by both SG07 and SG10 -- they both need
+            # the same declared-frontmatter view (SG07 reads
+            # network/filesystem_write, SG10 reads name/name_line), so
+            # there's no reason to re-read the file or re-run the YAML
+            # parse twice per scan (the TypeScript port's structural-
+            # analyzer-registry architecture re-parses per analyzer module
+            # instead, a deliberate trade-off of that plugin design --
+            # Python's direct-dispatch scan pipeline doesn't have that
+            # constraint, so it shares the one parse).
             declared = parse_frontmatter(skill_md_content)
             if declared:
-                actual = infer_actual_behavior(walk_result.files)
-                structural_findings.extend(diff_frontmatter_behavior(declared, actual))
+                if sg07_pack:
+                    actual = infer_actual_behavior(walk_result.files)
+                    structural_findings.extend(diff_frontmatter_behavior(declared, actual))
+                if sg10_pack and declared.name:
+                    known_names = load_known_names()
+                    if known_names:
+                        matches = find_typosquat_matches(declared.name, known_names)
+                        rel_file = os.path.relpath(walk_result.skill_md_path, abs_target).replace(
+                            os.sep, "/"
+                        )
+                        for match in matches:
+                            structural_findings.append(
+                                Finding(
+                                    rule_id="sg10-typosquat-suspected",
+                                    category="SG10",
+                                    # HIGH, not MEDIUM: an edit-distance-1-2
+                                    # near-miss of a well-known name
+                                    # (excluding the exact match itself,
+                                    # already filtered out by
+                                    # find_typosquat_matches) is the
+                                    # textbook typosquat pattern -- a
+                                    # dropped/doubled/swapped/substituted
+                                    # character intended to trick a human
+                                    # or agent into installing the wrong
+                                    # skill.
+                                    severity="HIGH",
+                                    message=(
+                                        f'SKILL.md declares name "{declared.name}", which closely '
+                                        f'resembles the well-known name "{match.known_name}" (edit '
+                                        f"distance {match.distance}) — this may be an attempt to "
+                                        "impersonate a popular skill or tool via typosquatting."
+                                    ),
+                                    file=rel_file,
+                                    line=declared.name_line or 1,
+                                )
+                            )
         except OSError as err:
             structural_warnings.append(
                 ScanWarning(
                     code="skill-md-unreadable",
                     message=format_what_why_fix(
-                        f'Could not read "{walk_result.skill_md_path}" for the SG07 '
-                        "frontmatter/behavior check.",
+                        f'Could not read "{walk_result.skill_md_path}" for the SG07/SG10 '
+                        "structural checks.",
                         str(err),
-                        "SG07 was skipped for this scan; the rest of the scan still ran. "
+                        "SG07/SG10 were skipped for this scan; the rest of the scan still ran. "
                         "Check the file exists and is readable.",
                     ),
                 )

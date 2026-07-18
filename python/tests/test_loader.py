@@ -132,11 +132,13 @@ def test_loads_structural_pack_without_rules_file(tmp_skill_dir):
     assert result.packs[0].rules == []
 
 
-def test_loads_all_seven_bundled_first_party_rule_packs():
+def test_loads_all_bundled_first_party_rule_packs():
     from skillguard.scan.index import _bundled_rulepacks_dir
 
     result = load_rule_packs(_bundled_rulepacks_dir(), "0.1.0")
 
     assert result.warnings == []
     categories = {p.manifest.category for p in result.packs}
-    assert categories == {"SG01", "SG02", "SG03", "SG04", "SG05", "SG06", "SG07"}
+    # SG08/SG09 are TypeScript-only so far (no Python port yet); SG10 is
+    # ported here for TS/Python parity.
+    assert categories == {"SG01", "SG02", "SG03", "SG04", "SG05", "SG06", "SG07", "SG10"}

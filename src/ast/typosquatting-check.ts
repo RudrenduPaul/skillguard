@@ -1,27 +1,21 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { parse as parseYaml } from 'yaml';
+import { parseFrontmatter } from './frontmatter-behavior-diff';
 
 /**
  * SG10 — marketplace typosquatting detection. Extracts the declared `name`
- * field from SKILL.md's YAML frontmatter and compares it against
- * rulepacks/sg10-marketplace-typosquatting/known-names.json, a small bundled
- * starter list of well-known package/tool names (not a live or
- * comprehensive marketplace registry — see that pack's pack.json). A
+ * field from SKILL.md's YAML frontmatter (via frontmatter-behavior-diff.ts's
+ * shared parseFrontmatter -- not a second YAML-frontmatter parser) and
+ * compares it against rulepacks/sg10-marketplace-typosquatting/known-names.json,
+ * a small bundled starter list of well-known package/tool names (not a live
+ * or comprehensive marketplace registry — see that pack's pack.json). A
  * near-miss (edit distance 1-2, not an exact match) suggests the declared
  * name may be impersonating a popular tool.
  *
  * This module never executes anything from the scan target, only reads
  * SKILL.md content already handed to it and pattern-matches — same
  * read-only invariant as src/ast/frontmatter-behavior-diff.ts.
- *
- * The frontmatter block regex mirrors FRONTMATTER_RE in
- * frontmatter-behavior-diff.ts (not exported there, so duplicated here
- * rather than modifying that shared module).
  */
-
-const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---/;
-const NAME_FIELD_RE = /^name:/m;
 
 export interface DeclaredName {
   name: string;
@@ -33,36 +27,17 @@ export interface DeclaredName {
  * Extracts the declared `name` field (and the line it appears on) from
  * SKILL.md's YAML frontmatter. Returns null when there is no frontmatter
  * block, the frontmatter isn't valid YAML, or no non-empty `name` field is
- * declared — in every case there is nothing to compare.
+ * declared — in every case there is nothing to compare. A thin wrapper
+ * around parseFrontmatter()'s `name`/`nameLine` fields (added there
+ * specifically so this module didn't need its own duplicate frontmatter
+ * parser), narrowing its `string | null` name to this module's
+ * name-required DeclaredName shape.
  */
 export function parseDeclaredName(skillMdContent: string): DeclaredName | null {
-  const match = FRONTMATTER_RE.exec(skillMdContent);
-  if (!match) return null;
+  const declared = parseFrontmatter(skillMdContent);
+  if (!declared || declared.name === null) return null;
 
-  const frontmatterBody = match[1];
-  let data: unknown;
-  try {
-    data = parseYaml(frontmatterBody);
-  } catch {
-    return null;
-  }
-
-  if (typeof data !== 'object' || data === null) return null;
-  const record = data as Record<string, unknown>;
-  const name = record.name;
-  if (typeof name !== 'string' || name.trim() === '') return null;
-
-  let line = 1;
-  const nameFieldMatch = NAME_FIELD_RE.exec(frontmatterBody);
-  if (nameFieldMatch) {
-    // The frontmatter body starts right after the opening `---` line (file
-    // line 1), so its own line 1 is file line 2.
-    const priorNewlines = (frontmatterBody.slice(0, nameFieldMatch.index).match(/\n/g) ?? [])
-      .length;
-    line = 2 + priorNewlines;
-  }
-
-  return { name: name.trim(), line };
+  return { name: declared.name, line: declared.nameLine ?? 1 };
 }
 
 /**

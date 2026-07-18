@@ -30,7 +30,13 @@ export function analyze(ctx: StructuralAnalysisContext): Finding[] {
     (match): Finding => ({
       ruleId: 'sg10-typosquat-suspected',
       category: 'SG10',
-      severity: 'MEDIUM',
+      // HIGH, not MEDIUM: an edit-distance-1-2 near-miss of a well-known
+      // name (excluding the exact match itself, already filtered out by
+      // findTyposquatMatches) is the textbook typosquat pattern -- a
+      // dropped/doubled/swapped/substituted character intended to trick a
+      // human or agent into installing the wrong skill, not a lower-
+      // confidence heuristic like SG05's obfuscation detection.
+      severity: 'HIGH',
       message: `SKILL.md declares name "${declared.name}", which closely resembles the well-known name "${match.knownName}" (edit distance ${match.distance}) — this may be an attempt to impersonate a popular skill or tool via typosquatting.`,
       file: relFile,
       line: declared.line,

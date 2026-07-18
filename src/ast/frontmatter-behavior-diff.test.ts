@@ -27,7 +27,19 @@ describe('ast/frontmatter-behavior-diff', () => {
   it('parses declared scope from SKILL.md frontmatter', () => {
     const content = '---\nname: x\nnetwork: false\nfilesystem: none\n---\nbody\n';
     const declared = parseFrontmatter(content);
-    expect(declared).toEqual({ network: false, filesystemWrite: false });
+    expect(declared).toEqual({ network: false, filesystemWrite: false, name: 'x', nameLine: 2 });
+  });
+
+  it('returns name: null and nameLine: null when there is no name field (consumed by SG10)', () => {
+    const declared = parseFrontmatter('---\nnetwork: false\nfilesystem: none\n---\n');
+    expect(declared?.name).toBeNull();
+    expect(declared?.nameLine).toBeNull();
+  });
+
+  it('trims the declared name and reports the correct 1-indexed nameLine when name is not the first key', () => {
+    const declared = parseFrontmatter('---\nnetwork: false\nname:   my-skill  \nfilesystem: none\n---\n');
+    expect(declared?.name).toBe('my-skill');
+    expect(declared?.nameLine).toBe(3);
   });
 
   it('returns null when there is no frontmatter block', () => {

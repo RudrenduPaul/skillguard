@@ -34,6 +34,8 @@ export function analyze(ctx: StructuralAnalysisContext): Finding[] {
   const ownDeclared = parseFrontmatter(ctx.skillMdContent) ?? {
     network: false,
     filesystemWrite: false,
+    name: null,
+    nameLine: null,
   };
 
   return diffCrossSkillChaining(ownDeclared, ctx.absTarget, references);
