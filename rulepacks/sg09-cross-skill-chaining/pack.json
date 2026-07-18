@@ -1,0 +1,8 @@
+{
+  "name": "sg09-cross-skill-chaining",
+  "version": "0.1.0",
+  "category": "SG09",
+  "minCoreVersion": "0.1.0",
+  "description": "Structural check (v1 sibling-path heuristic, not full multi-skill dependency-graph analysis): scans the skill being scanned for sibling-directory-style path references to another skill (e.g. \"../other-skill/...\", require()/import equivalents, os.path.join('..', 'other-skill', ...)), and — only when that referenced skill's SKILL.md is reachable on disk next to the current scan target — compares its declared network/filesystem scope against the current skill's own declared scope, flagging when the referenced skill declares broader permissions the current skill could gain without declaring them itself. This works within skillguard's existing single-skill-per-scan walker architecture; it cannot see skills outside the scan target's immediate parent directory and does not build a marketplace-wide dependency graph.",
+  "kind": "structural"
+}
