@@ -9,9 +9,7 @@ packs and scan semantics; entries note which distribution they apply to.
 ## [Python 0.1.2] - 2026-07-17
 
 Metadata-only release. Added Sourav Nandy as a listed co-author in
-`pyproject.toml` (`authors`) and `project.urls`, matching the attribution
-already used on this account's other PyPI packages (`memtrust`,
-`agent-eval`, `agent-observability`, `ownvoice`). No code changes.
+`pyproject.toml` (`authors`) and `project.urls`. No code changes.
 
 ## [Python 0.1.1] - 2026-07-16
 
