@@ -152,7 +152,7 @@ which language it's written in.
 | | SkillGuard | Snyk Agent Scan | Semgrep (CE) | Socket CLI |
 | --- | --- | --- | --- | --- |
 | What it scans | Agent-skill files: SKILL.md, hooks, scripts | Agent skills and MCP server configs | General source code, 30+ languages | npm/PyPI/etc. package installs |
-| Agent-skill-specific ruleset | Yes, all 7 categories purpose-built for this threat model | Yes, its whole focus | No, general SAST rules only | No, supply-chain focused |
+| Agent-skill-specific ruleset | Yes, all 10 categories purpose-built for this threat model | Yes, its whole focus | No, general SAST rules only | No, supply-chain focused |
 | Auth required for a basic scan | None | Yes, `SNYK_TOKEN` required | None for Community Edition | Yes, `SOCKET_CLI_API_TOKEN` |
 | License | Apache 2.0 | Apache 2.0 | LGPL-2.1 | MIT |
 
@@ -176,9 +176,16 @@ bundled fixtures) -- no extrapolation.
   package's own documented benchmark for the same fixture.
 - **`examples/clean-skill`** and **`examples/clean-skill-python`**: 0
   findings, exit code 0, on both.
-- **Test suite**: 54/54 pytest tests passing, ported from the TypeScript
-  vitest suite (one test module per source module, plus an end-to-end pass
-  against the shared fixtures).
+- **`examples/typosquat-skill`** (SG10): 1 finding, exit code 1 -- a
+  declared name one edit-distance away from a well-known package name.
+- **`skillguard scan-set examples/skill-set-cross-privilege`** (SG09):
+  3 findings, exit code 1 -- two skills that individually pass clean but,
+  scanned together, trip a cross-skill privilege-chaining finding.
+  `skillguard scan-set examples/skill-set-clean` on an unrelated pair of
+  skills: 0 findings, exit code 0.
+- **Test suite**: 110/110 pytest tests passing, ported from the
+  TypeScript vitest suite (one test module per source module, plus an
+  end-to-end pass against the shared fixtures).
 
 This is a 3-fixture check, not a large-corpus false-positive/false-negative
 study -- same caveat the npm README states for its own numbers.
