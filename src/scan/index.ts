@@ -4,12 +4,15 @@ import { walk } from '../walker';
 import { loadRulePacks, CORE_VERSION } from '../rulepacks/loader';
 import { compileRules, runRules } from './semgrep-runner';
 import { loadIgnoreFile, isInlineSuppressed } from '../suppress/skillguardignore';
+import { loadStructuralAnalyzers, type StructuralAnalysisContext } from './structural';
 import {
-  parseFrontmatter,
-  inferActualBehavior,
-  diffFrontmatterBehavior,
-} from '../ast/frontmatter-behavior-diff';
-import { meetsThreshold, type ScanOptions, type ScanResult, type Severity } from '../types';
+  meetsThreshold,
+  type Finding,
+  type ScanOptions,
+  type ScanResult,
+  type ScanWarning,
+  type Severity,
+} from '../types';
 import { formatWhatWhyFix } from '../errors';
 
 /*
@@ -31,9 +34,10 @@ import { formatWhatWhyFix } from '../errors';
  *        |
  *    +---+-----------------------------+
  *    v                                 v
- *  semgrep-runner.ts (SG01-06,       ast/frontmatter-behavior-diff.ts (SG07:
- *  partial SG05), per-file           declared vs actual scope, read-only)
- *  timeout enforced
+ *  semgrep-runner.ts (SG01-06,       scan/structural/ (structural analyzer
+ *  partial SG05), per-file           registry — directory-discovered, one
+ *  timeout enforced                  module per structural category, e.g.
+ *                                     SG07's declared-vs-actual-scope diff)
  *    |                                 |
  *    +-----------------+---------------+
  *                       v
@@ -129,12 +133,15 @@ export async function scanSkill(target: string, options: ScanOptions = {}): Prom
     clock: options.clock,
   });
 
-  const structuralFindings = [];
-  const structuralWarnings: typeof packWarnings = [];
-  const hasStructuralSg07 = packs.some(
-    (p) => p.manifest.category === 'SG07' && p.manifest.kind === 'structural'
-  );
-  if (hasStructuralSg07 && skillMdPath) {
+  const structuralFindings: Finding[] = [];
+  const structuralWarnings: ScanWarning[] = [];
+  const structuralPacks = packs.filter((p) => p.manifest.kind === 'structural');
+
+  if (structuralPacks.length > 0 && skillMdPath) {
+    const { analyzers: structuralAnalyzers, warnings: structuralAnalyzerWarnings } =
+      loadStructuralAnalyzers();
+    structuralWarnings.push(...structuralAnalyzerWarnings);
+
     // BUGFIX: this read was previously unguarded, unlike every other file
     // read in this module (walker, suppression cache). SKILL.md existing at
     // walk() time doesn't guarantee it's still readable a moment later
@@ -145,22 +152,55 @@ export async function scanSkill(target: string, options: ScanOptions = {}): Prom
     // for programmatic/agent-native callers. The CLI happened to survive it
     // via its own top-level catch-all, which masked this in manual CLI
     // testing.
+    let skillMdContent: string | null = null;
     try {
-      const skillMdContent = fs.readFileSync(skillMdPath, 'utf8');
-      const declared = parseFrontmatter(skillMdContent);
-      if (declared) {
-        const actual = inferActualBehavior(files);
-        structuralFindings.push(...diffFrontmatterBehavior(declared, actual));
-      }
+      skillMdContent = fs.readFileSync(skillMdPath, 'utf8');
     } catch (err) {
       structuralWarnings.push({
         code: 'skill-md-unreadable',
         message: formatWhatWhyFix(
-          `Could not read "${skillMdPath}" for the SG07 frontmatter/behavior check.`,
+          `Could not read "${skillMdPath}" for structural checks.`,
           `${(err as Error).message}`,
-          'SG07 was skipped for this scan; the rest of the scan still ran. Check the file exists and is readable.'
+          'Structural checks were skipped for this scan; the rest of the scan still ran. Check the file exists and is readable.'
         ),
       });
+    }
+
+    if (skillMdContent !== null) {
+      const ctx: StructuralAnalysisContext = {
+        skillMdPath,
+        skillMdContent,
+        files,
+        absTarget,
+      };
+
+      for (const pack of structuralPacks) {
+        const analyzer = structuralAnalyzers.find((a) => a.category === pack.manifest.category);
+        if (!analyzer) {
+          structuralWarnings.push({
+            code: 'structural-analyzer-missing',
+            message: formatWhatWhyFix(
+              `No structural analyzer is registered for "${pack.manifest.category}" (declared by rule pack "${pack.manifest.name}").`,
+              'The rule pack manifest declares kind "structural" for this category, but no matching analyzer module was found in the structural analyzer registry.',
+              'Ensure a structural analyzer module exporting that category exists under src/scan/structural/, or fix/remove the rule pack manifest.'
+            ),
+          });
+          continue;
+        }
+
+        try {
+          structuralFindings.push(...analyzer.analyze(ctx));
+        } catch (err) {
+          structuralWarnings.push({
+            code: 'structural-analyzer-failed',
+            message: formatWhatWhyFix(
+              `The "${pack.manifest.category}" structural analyzer threw while analyzing "${absTarget}".`,
+              `${(err as Error).message}`,
+              'This structural check was skipped for this scan; the rest of the scan still ran.'
+            ),
+          });
+        }
+      }
     }
   }
 
