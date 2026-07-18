@@ -6,6 +6,21 @@ both distributions -- the npm package (`skillguard-cli`, JS/TS) and the
 PyPI package (`skillguard-cli`, Python) -- since they ship the same rule
 packs and scan semantics; entries note which distribution they apply to.
 
+## [Unreleased]
+
+npm package. Bumped `vitest` (2.1.9 -> 4.x) and its transitive `vite`/
+`esbuild`, resolving 5 open Dependabot alerts (1 critical: arbitrary file
+read via the Vitest UI server; 1 high: Vite `server.fs.deny` bypass; 3
+moderate) -- all in devDependencies used only by the test runner, never
+shipped in the published package or reachable from the CLI/library/MCP
+server at runtime, but fixed rather than left open since they're on `main`.
+The newer `vitest` major requires `node:util`'s `styleText` export, which
+does not exist on Node 18 -- since Node 18 reached end-of-life in April
+2025, this is used as the occasion to raise the minimum supported Node
+version to 20 (`engines.node` and the CI matrix both updated) rather than
+pin an older, vulnerable `vitest`. `npm audit` reports zero vulnerabilities
+after the bump.
+
 ## [0.2.0] - 2026-07-18
 
 npm package. Adds an agent-native MCP (Model Context Protocol) server
