@@ -12,18 +12,7 @@ Scans third-party AI agent-skill files (`SKILL.md` manifests, hooks, and bundled
 
 </div>
 
-<!--
-  TODO: hero demo GIF. No recorded asset exists in the repo yet. Suggested
-  capture script for whoever records it: run `npx skillguard-cli scan
-  ./examples/known-bad-skill` in a terminal at 100x30, let the "Loading
-  SkillGuard rule packs..." line and the 11-finding human-readable report
-  play out in real time (about 3-4 seconds), then cut. Target under 10
-  seconds total, transparent or dark terminal background so it reads
-  cleanly in both GitHub light and dark mode. Place the resulting file at
-  `docs/assets/demo.gif` and reference it here with
-  `alt="Terminal recording of skillguard-cli scan finding 11 issues in a
-  deliberately vulnerable example skill"`.
--->
+![Terminal recording of installing skillguard-cli with npm and running its first scan against examples/known-bad-skill, reporting 11 findings](./docs/demo.gif)
 
 ## Why this exists
 
@@ -71,10 +60,10 @@ which returns zero findings and exit code 0.
 - [Rule packs](#rule-packs)
 - [How SkillGuard compares](#how-skillguard-compares)
 - [What is SkillGuard, and why does it exist](#what-is-skillguard-and-why-does-it-exist)
-- [FAQ](#faq)
 - [Suppressing findings](#suppressing-findings)
 - [Known limitations](#known-limitations)
-- [Contributing](#contributing)
+- [Development](#development)
+- [FAQ](#faq)
 - [License](#license)
 
 ## Features
@@ -121,6 +110,8 @@ npx skillguard-cli <command> [options]
 | `scan <path>` | Scans one skill directory (a `SKILL.md` plus its hooks/scripts) for known attack patterns. |
 | `scan-set <dir>` | Scans a directory whose immediate children are each a skill directory, running `scan` on every one and additionally checking for cross-skill privilege chaining (SG09) across the set. |
 | `mcp` | Starts SkillGuard as a stdio MCP server, exposing `scan_skill` as a callable tool for another agent. See [MCP server](#mcp-server-agent-native-tool-call). |
+
+![Terminal recording of npx skillguard-cli scan-set run against a two-skill directory, reporting a HIGH SG09 cross-skill-privilege-chaining finding between a filesystem-reading skill and a network-egress skill](./docs/usage.gif)
 
 Flags shared by `scan` and `scan-set` (verified against `src/cli.ts` and `skillguard/cli.py`):
 
@@ -229,26 +220,6 @@ A few honest notes, since a security tool's credibility depends on saying the un
 
 SkillGuard is a static-analysis scanner for third-party AI agent-skill files, `SKILL.md` manifests plus the hooks and scripts they bundle, built to run before an untrusted skill is installed or executed. It exists because agent-skill marketplaces and frameworks generally have no scan step of their own: a skill can declare `network: false` in its frontmatter and still ship a `postinstall` hook that pipes a remote script into a shell the moment it's installed, and nothing in most agent runtimes checks that the declared scope matches the actual behavior. SkillGuard reads the same ten rule packs from a CLI, a library, an MCP server, and a GitHub Action, so the same check can gate a CI pipeline, run inside an agent's own tool-use loop, or be called directly from code.
 
-## FAQ
-
-**Does SkillGuard require an account or API token to run a scan?**
-No. `npx skillguard-cli scan <path>` and `pip install skillguard-cli && skillguard scan <path>` both work with zero signup, zero token, and no network call at scan time.
-
-**Can an AI agent call SkillGuard directly, instead of shelling out to a CLI and parsing output?**
-Yes. `npx skillguard-cli mcp` (or `skillguard mcp` on the Python side) starts a stdio MCP server exposing a `scan_skill` tool, so an orchestrator or coding agent can scan a downloaded skill as a normal tool call before installing or running it.
-
-**Does SkillGuard catch a skill that references another, more privileged skill?**
-`scan-set` does: point it at a directory of skill subdirectories and it flags a HIGH finding when one skill has sensitive-filesystem-read capability and another has network-egress capability with no declared sandboxing between them. This is the specific gap Snyk Agent Scan's own issue tracker confirms their tool doesn't cover yet (single-file, non-recursive).
-
-**What's the difference between the npm package and the PyPI package?**
-Both are independent, equally maintained ports reading the same rule-pack contract and producing matching findings against the same target; the PyPI package is a genuine Python implementation, not a wrapper around the Node binary. One current gap: TypeScript's `scan` command runs an extra sibling-path cross-skill heuristic that Python doesn't have yet (Python's cross-skill detection lives entirely in `scan-set`).
-
-**Does SkillGuard replace Semgrep or Snyk?**
-No. Semgrep is a mature, general-purpose static-analysis engine across 30+ languages; Snyk covers dependency and code vulnerabilities broadly, and Snyk Agent Scan covers a wider set of agent-skill and MCP-config threats than SkillGuard does today. SkillGuard's job is narrower: the specific SKILL.md/hooks/frontmatter threat model, with zero auth and a cross-skill check neither of those tools currently ships.
-
-**Is SkillGuard production-ready?**
-It's early: one week old, pre-1.0, zero GitHub stars as of this writing. The test suite (157/157 TypeScript, 110/110 Python) passes on a clean install and every command in this README was independently re-run against the current code, but it hasn't been run against a large real-world corpus yet, so treat its false-positive/false-negative rate as unproven at scale rather than settled.
-
 ## Suppressing findings
 
 **Trust model:** SkillGuard's job is to vet directories you did *not* write. Both suppression mechanisms below can silence a finding, so neither is ever trusted automatically from inside the thing being scanned. Each requires an explicit, deliberate opt-in from whoever runs the scan.
@@ -289,6 +260,38 @@ pytest
 ```
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md): a rule-pack change must land in both `rulepacks/` and `python/src/skillguard/rulepacks/data/` with equivalent test coverage in both suites, since a rule that only exists in one language is a silent behavior gap between the two CLIs.
+
+## FAQ
+
+**What is SkillGuard, and what makes it different from a general-purpose security scanner?**
+SkillGuard is a static-analysis scanner purpose-built for one threat model: third-party AI agent-skill files, `SKILL.md` manifests plus the hooks and scripts they bundle. It ships ten rule categories (SG01-SG10) targeting things generic scanners don't check for by default, frontmatter-declared scope versus actual behavior, install-time hook supply-chain risk, prompt injection embedded in a skill's own instructional text, and combined risk across multiple skills in the same directory. A general SAST tool like Semgrep can find some of the same code-level patterns, but it has no notion of a `SKILL.md` manifest or a cross-skill privilege relationship.
+
+**Does SkillGuard require an account or API token to run a scan?**
+No. `npx skillguard-cli scan <path>` and `pip install skillguard-cli && skillguard scan <path>` both work with zero signup, zero token, and no network call at scan time.
+
+**What platforms and language runtimes does SkillGuard support?**
+The npm package needs Node.js >=20 (per `package.json`'s `engines` field) and has no native/compiled dependencies. The PyPI package needs Python >=3.9 for the base install, or >=3.10 if you install the optional `mcp` extra for MCP server mode (per `pyproject.toml`'s `requires-python` and its `mcp` optional-dependency comment). Both are pure-language packages with no OS-specific build step, and the Python package's classifiers declare `Operating System :: OS Independent`.
+
+**What do SG08, SG09, and SG10 check, and can they run through the MCP server too?**
+SG08 (HIGH) looks for prompt injection inside a skill's own instructional text, attempts to override the host agent's system prompt or hijack its tool routing, across 7 distinct rule IDs. SG09 (HIGH) is cross-skill privilege chaining: `scan-set` flags a HIGH finding when one skill in a directory has sensitive-filesystem-read capability and another has network-egress capability with no declared sandboxing between them; TypeScript's plain `scan` also runs a narrower sibling-path variant of the same check. SG10 (HIGH) is marketplace typosquatting: a skill's declared name sitting Levenshtein edit-distance 1-2 from a bundled list of 51 popular npm/PyPI package names. All three run through `npx skillguard-cli mcp`'s `scan_skill` tool exactly as they do through the CLI, since the MCP server calls the same underlying scan logic.
+
+**Can an AI agent call SkillGuard directly, instead of shelling out to a CLI and parsing output?**
+Yes. `npx skillguard-cli mcp` (or `skillguard mcp` on the Python side) starts a stdio MCP server exposing a `scan_skill` tool, so an orchestrator or coding agent can scan a downloaded skill as a normal tool call before installing or running it.
+
+**Does SkillGuard catch a skill that references another, more privileged skill?**
+`scan-set` does: point it at a directory of skill subdirectories and it flags a HIGH finding when one skill has sensitive-filesystem-read capability and another has network-egress capability with no declared sandboxing between them. This is the specific gap Snyk Agent Scan's own issue tracker confirms their tool doesn't cover yet (single-file, non-recursive).
+
+**What's the difference between the npm package and the PyPI package?**
+Both are independent, equally maintained ports reading the same rule-pack contract and producing matching findings against the same target; the PyPI package is a genuine Python implementation, not a wrapper around the Node binary. One current gap: TypeScript's `scan` command runs an extra sibling-path cross-skill heuristic that Python doesn't have yet (Python's cross-skill detection lives entirely in `scan-set`). If you rely on cross-skill detection from a single `scan` call rather than `scan-set`, that path is TypeScript-only today, run `scan-set` on the Python side instead to get equivalent coverage.
+
+**Does SkillGuard replace Semgrep or Snyk?**
+No. Semgrep is a mature, general-purpose static-analysis engine across 30+ languages; Snyk covers dependency and code vulnerabilities broadly, and Snyk Agent Scan covers a wider set of agent-skill and MCP-config threats than SkillGuard does today. SkillGuard's job is narrower: the specific SKILL.md/hooks/frontmatter threat model, with zero auth and a cross-skill check neither of those tools currently ships.
+
+**Is SkillGuard production-ready?**
+It's early: one week old, pre-1.0, zero GitHub stars as of this writing. The test suite (157/157 TypeScript, 110/110 Python) passes on a clean install and every command in this README was independently re-run against the current code, but it hasn't been run against a large real-world corpus yet, so treat its false-positive/false-negative rate as unproven at scale rather than settled.
+
+**Can I use SkillGuard commercially, and does the license cost anything?**
+Yes, and no. SkillGuard is Apache License 2.0 (see [LICENSE](./LICENSE)), which permits commercial use, modification, and redistribution, including inside proprietary software, at no cost, provided you keep the copyright and license notice. Apache 2.0 also grants an explicit patent license from contributors, which plain MIT does not.
 
 ## License
 
