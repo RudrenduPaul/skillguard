@@ -89,6 +89,42 @@ if result.exit_code == 1:
         print(f"[{finding.severity}] {finding.category} {finding.file}:{finding.line} — {finding.message}")
 ```
 
+## CLI reference
+
+Verified against this package's own argument parser
+([`skillguard/cli.py`](https://github.com/RudrenduPaul/skillguard/blob/main/python/src/skillguard/cli.py))
+-- every flag below exists in the Python distribution exactly as it does in the npm one; nothing
+here is copy-pasted from the TypeScript README without checking against the real Python source.
+
+```bash
+skillguard <command> [options]
+```
+
+| Command | What it does |
+| --- | --- |
+| `scan <path>` | Scans one skill directory (a `SKILL.md` plus its hooks/scripts) for known attack patterns. |
+| `scan-set <dir>` | Scans a directory whose immediate children are each a skill directory, running `scan` on every one and additionally checking for cross-skill privilege chaining (SG09) across the set. |
+| `mcp` | Starts SkillGuard as a stdio MCP server, exposing `scan_skill` as a callable tool for another agent. Requires the optional `mcp` extra (`pip install "skillguard-cli[mcp]"`, Python >=3.10). See [MCP server](#mcp-server-agent-native-tool-call) below. |
+
+Flags shared by `scan` and `scan-set`:
+
+| Flag | Short | Default | Description |
+| --- | --- | --- | --- |
+| `--format <human\|json\|sarif>` | `-f` | `human` | Output format. |
+| `--severity-threshold <HIGH\|MEDIUM\|LOW>` | `-s` | `HIGH` | Minimum severity that fails the scan (exit code 1). |
+| `--timeout <ms>` | `-t` | `10000` | Per-file scan timeout in milliseconds. |
+| `--skillguardignore <path>` | none | none, must be passed explicitly | Path to a `.skillguardignore` file. Never auto-loaded from inside the scan target; see [Suppressing findings](https://github.com/RudrenduPaul/skillguard#suppressing-findings) in the project README. |
+| `--allow-inline-suppression` | none | `False` | Honor inline `# skillguard-ignore: SGxx` comments found inside the scanned files. Off by default. |
+
+**Exit codes**: `0` clean scan. `1` a finding at or above the severity threshold. `2` the target
+path doesn't exist, no skill files were found, or the CLI was given an invalid flag value (the
+Python CLI's `argparse`-based parser calls `sys.exit(2)` directly for a bad `--format`,
+`--severity-threshold`, or `--timeout` value). This matches the npm CLI's exit-code contract.
+
+The Python CLI additionally accepts short flags (`-f`, `-s`, `-t`) alongside the long ones shown
+above -- a Python-`argparse` convention this port adds on top of the shared flag surface, not a
+behavior difference in what each flag does.
+
 ## MCP server (agent-native, tool-call)
 
 ```bash
@@ -241,6 +277,80 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest
 ```
+
+## FAQ
+
+**What is skillguard-cli, and what makes it different from a general-purpose security scanner?**
+It's a static-analysis scanner purpose-built for one threat model: third-party AI agent-skill
+files, `SKILL.md` manifests plus the hooks and scripts they bundle. It ships ten rule categories
+(SG01-SG10) targeting things generic scanners don't check for by default -- frontmatter-declared
+scope versus actual behavior, install-time hook supply-chain risk, prompt injection embedded in a
+skill's own instructional text, and combined risk across multiple skills in the same directory. A
+general SAST tool like Semgrep can find some of the same code-level patterns, but it has no notion
+of a `SKILL.md` manifest or a cross-skill privilege relationship.
+
+**Does skillguard-cli require an account or API token to run a scan?**
+No. `pip install skillguard-cli && skillguard scan <path>` works with zero signup, zero token, and
+no network call at scan time -- every rule pack ships inside the wheel itself.
+
+**What Python versions does skillguard-cli support?**
+Python >=3.9 for the base install (per `pyproject.toml`'s `requires-python`), or >=3.10 if you
+install the optional `mcp` extra for MCP server mode (the official `mcp` SDK itself requires
+Python >=3.10). It's a pure-Python package with no native/compiled dependencies, and its PyPI
+classifiers declare `Operating System :: OS Independent`.
+
+**What's the difference between this package and the npm package?**
+Both are independent, equally maintained ports reading the same rule-pack contract and producing
+matching findings against the same target -- this Python distribution is a genuine implementation,
+not a wrapper around the Node binary. One current, honestly-disclosed gap: nine of the ten rule
+packs (SG01-SG08, SG10) are fully reimplemented as Python logic; SG09 (cross-skill privilege
+chaining) has no dedicated Python detection logic of its own yet, though `scan_skill_set()` still
+runs the cross-skill orchestration via `scan-set`. TypeScript's plain `scan` command also runs an
+extra sibling-path cross-skill heuristic Python doesn't have -- run `scan-set` on the Python side
+for equivalent cross-skill coverage. See [How it works](#how-it-works) above.
+
+**Can an AI agent call skillguard-cli directly, instead of shelling out to a CLI and parsing
+output?**
+Yes, two ways: `skillguard mcp` (requires the `mcp` extra) starts a stdio MCP server exposing a
+`scan_skill` tool any orchestrating agent can call as a normal tool call; or import
+`scan_skill()`/`scan_skill_set()` from the `skillguard` package directly in Python code and get a
+structured `ScanResult` back instead of parsing CLI stdout.
+
+**What do SG08, SG09, and SG10 check, and do they run through the MCP server too?**
+SG08 (HIGH) looks for prompt injection inside a skill's own instructional text, an attempt to
+override the host agent's system prompt or hijack its tool routing. SG09 (HIGH) is cross-skill
+privilege chaining -- in this package it's detected via `scan_skill_set()`/`scan-set` (not yet as
+a single-skill sibling-path check the way TypeScript's plain `scan` does). SG10 (HIGH) is
+marketplace typosquatting: a skill's declared name sitting Levenshtein edit-distance 1-2 from a
+bundled list of 51 popular npm/PyPI package names. All three run through `skillguard mcp`'s
+`scan_skill` tool exactly as they do through the CLI, since the MCP server calls the same
+underlying scan logic.
+
+**Is it safe to run skillguard-cli against an untrusted skill?**
+Yes -- that's the point of the design. Neither this package nor the npm package ever `eval()`s,
+`exec()`s, or dynamically imports anything read from a scan target; content is only ever read and
+pattern-matched. Both suppression mechanisms (`.skillguardignore`, inline `# skillguard-ignore:`
+comments) are off by default and require an explicit opt-in, so a malicious skill submission can't
+silence findings about itself. See [Security](#security) above.
+
+**Does skillguard-cli replace Semgrep or Snyk?**
+No. Semgrep is a mature, general-purpose static-analysis engine across 30+ languages; Snyk Agent
+Scan covers a wider set of agent-skill and MCP-config threats than SkillGuard does today.
+skillguard-cli's job is narrower: the specific SKILL.md/hooks/frontmatter threat model, with zero
+auth and a cross-skill check (`scan-set`) neither of those tools currently ships. See [How
+SkillGuard compares](#how-skillguard-compares) above.
+
+**Is skillguard-cli production-ready?**
+It's early: pre-1.0, launched 2026-07-11. The Python test suite (110/110 pytest tests, ported from
+the TypeScript vitest suite) passes on a clean install, but it hasn't been run against a large
+real-world corpus yet -- treat its false-positive/false-negative rate as unproven at scale rather
+than settled.
+
+**Can I use skillguard-cli commercially, and does the license cost anything?**
+Yes, and no. It's Apache License 2.0 (see
+[LICENSE](https://github.com/RudrenduPaul/skillguard/blob/main/LICENSE)), which permits commercial
+use, modification, and redistribution, including inside proprietary software, at no cost, provided
+you keep the copyright and license notice.
 
 ## License
 
