@@ -12,6 +12,9 @@
   ],
   "license": "Apache-2.0",
   "author": "Rudrendu Paul",
+  "contributors": [
+    "Sourav Nandy"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/RudrenduPaul/skillguard.git"
