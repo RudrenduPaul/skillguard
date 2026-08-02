@@ -3,12 +3,12 @@
 SkillGuard ships two independently maintained, equally first-class
 distributions of the same scanner: an npm package (`skillguard-cli`,
 TypeScript, repo root) and a PyPI package (`skillguard-cli`, Python,
-`python/`). Both read the same seven rule packs (`rulepacks/` at the repo
-root for the npm package; `python/src/skillguard/rulepacks/data/` for the
-Python package, kept in sync by hand since they're separate language
-runtimes) and are expected to produce the same findings against the same
-target. Please read this whole file before opening a PR -- which section
-applies depends on which codebase you're touching.
+`python/`). Both read the same ten rule packs, SG01-SG10 (`rulepacks/` at
+the repo root for the npm package; `python/src/skillguard/rulepacks/data/`
+for the Python package, kept in sync by hand since they're separate
+language runtimes) and are expected to produce the same findings against
+the same target. Please read this whole file before opening a PR -- which
+section applies depends on which codebase you're touching.
 
 ## Ground rules
 
@@ -74,11 +74,12 @@ pytest
 
 ## Adding or changing a rule
 
-1. Decide the category (SG01-SG07) and severity per the locked taxonomy:
+1. Decide the category (SG01-SG10) and severity per the locked taxonomy:
    HIGH for confirmed executable impact (e.g. remote code execution,
-   credential exfiltration), MEDIUM for a declared-scope violation without a
-   confirmed exploit path, LOW for best-effort/higher-false-negative
-   detection (currently only SG05).
+   credential exfiltration, prompt injection, cross-skill privilege
+   chaining, marketplace typosquatting), MEDIUM for a declared-scope
+   violation without a confirmed exploit path, LOW for best-effort/
+   higher-false-negative detection (currently only SG05).
 2. Add the rule to `rulepacks/<pack>/rules.yml` (TypeScript) and the
    matching `python/src/skillguard/rulepacks/data/<pack>/rules.yml`
    (Python) with the same `id`, `severity`, `languages`, and an equivalent

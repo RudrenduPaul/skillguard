@@ -3,10 +3,10 @@
 SkillGuard scans a directory containing an AI agent skill (a `SKILL.md`
 manifest plus `hooks/`/`scripts/` files) for known attack patterns, before
 that skill runs with real tool, file, and network permissions. It ships as
-two independent, equally first-class packages that read the same seven
-bundled rule packs: an npm package (`skillguard-cli`, JavaScript/TypeScript)
-and a PyPI package (`skillguard-cli`, Python). Pick whichever fits your
-toolchain, or install both.
+two independent, equally first-class packages that read the same ten
+bundled rule packs (SG01-SG10): an npm package (`skillguard-cli`,
+JavaScript/TypeScript) and a PyPI package (`skillguard-cli`, Python). Pick
+whichever fits your toolchain, or install both.
 
 ## Install
 
@@ -24,7 +24,7 @@ npx skillguard-cli scan ./my-skill
 pip install skillguard-cli
 ```
 
-Neither install pulls anything at scan time: all seven rule packs and the
+Neither install pulls anything at scan time: all ten rule packs and the
 pattern-matching engine ship inside the package itself (npm tarball or
 Python wheel). No external binary, no network fetch, no separate toolchain.
 
@@ -124,7 +124,7 @@ see [concepts.md](./concepts.md) for the full data model.
 
 ## Next steps
 
-- [concepts.md](./concepts.md) -- what each of the seven rule packs
+- [concepts.md](./concepts.md) -- what each of the ten rule packs
   actually catches, and how the scan pipeline decides a verdict.
 - [integrations/ci.md](./integrations/ci.md) -- wiring SkillGuard into a CI
   pipeline (GitHub Action for the npm CLI, a plain CI step for the Python
