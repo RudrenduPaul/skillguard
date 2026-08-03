@@ -22,10 +22,15 @@ rule-pack loader            -> loaded packs (invalid packs skipped + warned,
  +---+-----------------------------+
  v                                 v
 pattern engine (SG01-06,       structural module (SG07: declared vs
-partial SG05), per-file        actual scope, read-only)
-timeout enforced
+SG08, SG10, partial SG05),     actual scope, read-only)
+per-file timeout enforced
  |                                 |
  +-----------------+---------------+
+                    |
+                    v
+      cross-skill module (SG09, `scan-set` only): sensitive-filesystem-
+      read vs. network-egress capability across the skills in a directory
+                    |
                     v
            inline suppression filter (# skillguard-ignore: SGxx),
            off by default -- opt in via --allow-inline-suppression
@@ -50,14 +55,19 @@ target) -- those become `warnings`, not crashes.
 The default `--severity-threshold` is `HIGH`: only HIGH findings fail a
 scan (exit code 1) unless you lower the threshold explicitly.
 
-## The seven rule packs
+## The ten rule packs
 
 Each pack is a directory with a `pack.json` manifest plus (for "pattern"
 packs) a `rules.yml` file of regex rules scoped to one or more of the four
-supported languages (JavaScript/TypeScript, Python, shell). SG07 is the one
-"structural" pack -- its logic needs a parsed view of both SKILL.md and the
-script set together, not a single-file pattern match, so it ships as core
-code rather than a rules file.
+supported languages (JavaScript/TypeScript, Python, shell). SG07 and SG09
+are "structural"/cross-file packs -- their logic needs a parsed view of
+SKILL.md plus the script set (SG07), or of multiple skill directories at
+once (SG09), not a single-file pattern match, so they ship as core code
+rather than a rules file. On the Python distribution, SG09's cross-skill
+logic currently lives only in the `scan-set` orchestration path, not as a
+single-skill sibling-path check the way TypeScript's `scan` also runs one
+(see the root README's "How SkillGuard compares" / API reference sections
+for that documented gap).
 
 ### SG01 -- network mismatch (MEDIUM)
 
@@ -148,10 +158,41 @@ skill lying about its own permission scope, as distinct from SG01-SG06
 which flag suspicious patterns regardless of what the skill claims about
 itself.
 
+### SG08 -- prompt injection via skill content (HIGH)
+
+Flags a SKILL.md's own instructional text attempting to override the host
+agent's system prompt or hijack its tool routing, across seven distinct
+rule IDs (`sg08-ignore-prior-instructions`, `sg08-disregard-system-prompt`,
+`sg08-fake-mode-switch`, `sg08-reveal-system-prompt`,
+`sg08-hide-action-from-user`, `sg08-hidden-unicode-characters`,
+`sg08-encoded-block-in-instructions`). This is distinct from the other
+packs: it inspects the skill's *declared instructions*, not its hooks or
+scripts, since a skill can be a prompt-injection vector purely through the
+text it asks the host agent to read and follow.
+
+### SG09 -- cross-skill privilege chaining (HIGH)
+
+The only pack that reasons across multiple skill directories at once,
+`scan-set` runs it in addition to each skill's own `scan` findings: it
+flags a HIGH finding when one skill in the target directory has
+sensitive-filesystem-read capability and another has network-egress
+capability, with no declared sandboxing between them -- a threat a
+single-skill scan structurally cannot see, since neither skill in isolation
+looks dangerous. TypeScript's plain `scan` command also runs a narrower
+single-skill sibling-path variant of this same check; the Python
+distribution's cross-skill detection currently lives only in `scan-set`.
+
+### SG10 -- marketplace typosquatting (HIGH)
+
+Flags a SKILL.md's declared name sitting Levenshtein edit-distance 1-2 from
+a bundled list of 51 popular npm/PyPI package names -- an attempt to
+impersonate a well-known tool so a user installs the malicious skill by
+mistake instead of the real dependency it's impersonating.
+
 ## Verdict model: findings, warnings, and exit codes
 
 - **Findings** are specific, file:line-cited matches against a rule. They
-  carry a `ruleId`, `category` (SG01-SG07), `severity`, `message`, `file`,
+  carry a `ruleId`, `category` (SG01-SG10), `severity`, `message`, `file`,
   `line`, and an optional `snippet` (the matched text, truncated to 200
   characters).
 - **Warnings** are scan-level diagnostics that are *not* about the scan
