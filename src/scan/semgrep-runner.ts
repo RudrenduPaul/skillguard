@@ -4,17 +4,14 @@ import type { PatternRule } from '../rulepacks/manifest-schema';
 import type { Finding, RuleCategory } from '../types';
 
 /**
- * DEVIATION NOTE (documented per the build instructions — no real "official
- * npm Semgrep wrapper" exists to bundle): the original design calls for
- * invoking Semgrep via "the official @semgrep/semgrep npm wrapper." No such
- * package exists on the npm registry — Semgrep's only official distribution
- * is the `semgrep` PyPI package plus platform binaries, with no npm-native
- * install path. Depending on it would break the locked "zero required
- * config" / `npx skillguard-cli scan` success criterion for anyone without a
- * separate Python toolchain, and would also violate the bundled-in-npm-
- * package / no-remote-fetch constraint (Architecture finding 1) since the
- * platform binary itself is fetched from Semgrep's own release infra at
- * install time, not bundled.
+ * DEVIATION NOTE: no official Semgrep distribution exists for either the npm
+ * or PyPI ecosystem as a bundleable, zero-config dependency (Semgrep's own
+ * distribution is a PyPI package plus platform binaries fetched from its own
+ * release infrastructure at install time, which conflicts with the "bundled
+ * rule packs, zero network fetch at scan time" architecture this project
+ * locked in). Depending on it would also break the "zero required config" /
+ * `npx skillguard-cli scan` success criterion for anyone without a separate
+ * Python toolchain.
  *
  * This module instead implements a small, self-contained, in-process pattern
  * engine that consumes the *same* rule-pack contract (pack.json + a rules
