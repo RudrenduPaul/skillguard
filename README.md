@@ -207,14 +207,14 @@ SkillGuard is purpose-built for the agent-skill threat model, frontmatter-declar
 | Auth required for a basic scan | None (`npx skillguard-cli scan <path>`) | Yes, requires a Snyk account and `SNYK_TOKEN` | None for Community Edition local scans | Yes, `SOCKET_CLI_API_TOKEN` needed for full functionality |
 | Runtime | Node.js, zero external binary (Python port also available) | Python via `uvx` | Own binary (Python-based CLI) | Node.js |
 | License | Apache 2.0 | Apache 2.0 | LGPL-2.1 | MIT (per the [`socket` npm package listing](https://www.npmjs.com/package/socket); the repo itself carries no LICENSE file) |
-| GitHub stars (checked 2026-07-18) | 0, one week old, launched 2026-07-11 | 2,790 stars, 250 forks | 15,945 stars, 992 forks | 299 stars, 54 forks |
+| GitHub stars (checked 2026-08-03) | 1 star, three weeks old, launched 2026-07-11 | 2,858 stars, 254 forks | 16,102 stars, 1,011 forks | 303 stars, 56 forks |
 
 A few honest notes, since a security tool's credibility depends on saying the unflattering parts out loud:
 
-- **Snyk Agent Scan is the closest real competitor**, more mature (2,790 stars vs. SkillGuard's 0) and covering more overall ground (15+ detection categories, plus MCP server config scanning, which SkillGuard does not do). The real differences are the auth story (SkillGuard needs zero signup or token) and cross-skill analysis (Snyk's own maintainers confirmed their tool is single-file today). If you already have a Snyk account and want MCP-server coverage too, Agent Scan covers more ground; if you want a zero-auth check that can also reason about a whole directory of skills at once, that's what SkillGuard is for.
+- **Snyk Agent Scan is the closest real competitor**, more mature (2,858 stars vs. SkillGuard's 1) and covering more overall ground (15+ detection categories, plus MCP server config scanning, which SkillGuard does not do). The real differences are the auth story (SkillGuard needs zero signup or token) and cross-skill analysis (Snyk's own maintainers confirmed their tool is single-file today). If you already have a Snyk account and want MCP-server coverage too, Agent Scan covers more ground; if you want a zero-auth check that can also reason about a whole directory of skills at once, that's what SkillGuard is for.
 - **SkillGuard does not wrap Semgrep.** It ships its own small, in-process pattern engine (Semgrep-inspired, not Semgrep) so the `npx` install never depends on a Python/PyPI toolchain. If you need true multi-language, general-purpose static analysis across 30+ languages, Semgrep is the more mature tool for that job.
 - **Socket CLI is an adjacent category, not a direct competitor.** It's built for typosquats and malicious install scripts across npm/PyPI packages, not a skill's own SKILL.md frontmatter and declared-versus-actual behavior.
-- **SkillGuard itself is genuinely early**: zero GitHub stars, one week since the first commit. That's a real "early but real" story, not something worth dressing up: every command and finding shown in this README was run against the actual current code while writing it, not carried over from an old draft.
+- **SkillGuard itself is genuinely early**: 1 GitHub star, three weeks since the first commit. That's a real "early but real" story, not something worth dressing up: every command and finding shown in this README was run against the actual current code while writing it, not carried over from an old draft.
 
 ## What is SkillGuard, and why does it exist
 
@@ -288,7 +288,7 @@ Both are independent, equally maintained ports reading the same rule-pack contra
 No. Semgrep is a mature, general-purpose static-analysis engine across 30+ languages; Snyk covers dependency and code vulnerabilities broadly, and Snyk Agent Scan covers a wider set of agent-skill and MCP-config threats than SkillGuard does today. SkillGuard's job is narrower: the specific SKILL.md/hooks/frontmatter threat model, with zero auth and a cross-skill check neither of those tools currently ships.
 
 **Is SkillGuard production-ready?**
-It's early: one week old, pre-1.0, zero GitHub stars as of this writing. The test suite (157/157 TypeScript, 110/110 Python) passes on a clean install and every command in this README was independently re-run against the current code, but it hasn't been run against a large real-world corpus yet, so treat its false-positive/false-negative rate as unproven at scale rather than settled.
+It's early: about three weeks old, pre-1.0, 1 GitHub star as of this writing. The test suite (157/157 TypeScript, 110/110 Python) passes on a clean install and every command in this README was independently re-run against the current code, but it hasn't been run against a large real-world corpus yet, so treat its false-positive/false-negative rate as unproven at scale rather than settled.
 
 **Can I use SkillGuard commercially, and does the license cost anything?**
 Yes, and no. SkillGuard is Apache License 2.0 (see [LICENSE](./LICENSE)), which permits commercial use, modification, and redistribution, including inside proprietary software, at no cost, provided you keep the copyright and license notice. Apache 2.0 also grants an explicit patent license from contributors, which plain MIT does not.
