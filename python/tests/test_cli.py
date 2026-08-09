@@ -1,6 +1,21 @@
 import pytest
 
+from skillguard import __version__
 from skillguard.cli import run_cli
+
+
+def test_version_flag_reports_the_real_installed_package_version(capsys):
+    """Regression: __version__ (and cli.py's separate copy of it) was a
+    hardcoded string that drifted from the actual installed/published
+    version, so `skillguard --version` silently reported a stale number.
+    __version__ is now read live from package metadata, and this asserts
+    the CLI's --version output actually reflects it, not a second
+    hand-maintained constant that could drift independently again."""
+    with pytest.raises(SystemExit) as exc_info:
+        run_cli(["skillguard", "--version"])
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+    assert __version__ in captured.out
 
 
 def test_exits_2_when_target_path_does_not_exist(tmp_skill_dir, capsys):

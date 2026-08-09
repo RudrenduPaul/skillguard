@@ -27,6 +27,8 @@ skill's own scan_skill()-equivalent result.
     from skillguard import scan_skill_set
     set_result = scan_skill_set("./my-skills-dir")
 """
+from importlib import metadata as _importlib_metadata
+
 from .scan.index import scan_skill
 from .scan.skill_set import compute_cross_skill_findings, discover_skill_dirs, scan_skill_set
 from .types import (
@@ -41,7 +43,19 @@ from .types import (
     SkillSetScanResult,
 )
 
-__version__ = "0.2.0"
+try:
+    # Read the version from the installed package's own metadata rather than
+    # a hand-maintained string here, which silently drifted from the real
+    # pyproject.toml version (this constant, and cli.py's separate _VERSION
+    # constant, were still "0.2.0" while the package had shipped 0.2.2 on
+    # PyPI, so `skillguard --version` reported a stale, wrong version to
+    # every user and agent that checked it).
+    __version__ = _importlib_metadata.version("skillguard-cli")
+except _importlib_metadata.PackageNotFoundError:
+    # Not installed (e.g. running straight from a source checkout without
+    # `pip install -e .`) -- fall back to a clearly-labeled placeholder
+    # instead of a number that can silently go stale again.
+    __version__ = "0.0.0-dev"
 
 __all__ = [
     "scan_skill",
