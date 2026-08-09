@@ -7,6 +7,14 @@ import type { OutputFormat, Severity } from './types';
 import { formatWhatWhyFix } from './errors';
 import { runMcpServer } from './mcp/server';
 
+// Read the real published version from package.json instead of a
+// hand-maintained literal, which had drifted out of sync with the actual
+// published version (this string was still "0.2.0" while npm had already
+// shipped 0.2.3), so `skillguard-cli --version` reported a stale, wrong
+// version to every user and agent that checked it.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { version: PACKAGE_VERSION } = require('../package.json') as { version: string };
+
 /*
  * Thin argument-parsing wrapper over src/scan/index.ts (see that file for the
  * full data-flow diagram). This file owns: flag parsing, the WHAT/WHY/FIX
@@ -63,7 +71,7 @@ export async function runCli(argv: string[]): Promise<number> {
     .description(
       'Security scanner for third-party AI agent-skill files: SKILL.md manifests, hooks, and bundled scripts.'
     )
-    .version('0.2.0');
+    .version(PACKAGE_VERSION);
 
   let exitCode = 0;
 

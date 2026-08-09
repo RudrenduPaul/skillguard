@@ -81,6 +81,8 @@ which returns zero findings and exit code 0.
 npx skillguard-cli scan ./my-skill --format json --severity-threshold MEDIUM
 ```
 
+![Terminal recording of npx skillguard-cli scan run with --format json, showing the structured JSON findings output a script or agent can parse directly](./docs/json-output.gif)
+
 ```ts
 import { scanSkill } from 'skillguard-cli';
 
