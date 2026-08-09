@@ -17,6 +17,7 @@ import argparse
 import sys
 from typing import List, NoReturn
 
+from . import __version__ as _VERSION
 from .errors import format_what_why_fix
 from .output.formatters import format_result, format_set_result
 from .scan.index import scan_skill
@@ -25,7 +26,6 @@ from .types import ScanOptions
 
 _SEVERITIES = ["HIGH", "MEDIUM", "LOW"]
 _FORMATS = ["human", "json", "sarif"]
-_VERSION = "0.2.0"
 
 
 def _fail(what: str, why: str, fix: str) -> NoReturn:

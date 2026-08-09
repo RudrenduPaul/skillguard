@@ -6,6 +6,17 @@ both distributions -- the npm package (`skillguard-cli`, JS/TS) and the
 PyPI package (`skillguard-cli`, Python) -- since they ship the same rule
 packs and scan semantics; entries note which distribution they apply to.
 
+## [0.2.3] - 2026-08-08 (PyPI)
+
+Bug fix. Both `skillguard/__init__.py`'s `__version__` and `skillguard/cli.py`'s
+separate `_VERSION` constant were hardcoded to `"0.2.0"`, drifted from the real
+`pyproject.toml` version -- the installed/published package was 0.2.2, but
+`skillguard --version` still reported 0.2.0. `__version__` is now read live
+from the installed package's own metadata via
+`importlib.metadata.version("skillguard-cli")`, and `cli.py` imports that
+same value instead of keeping its own copy, matching how the npm CLI already
+derives its version from `package.json` at runtime.
+
 ## [Unreleased]
 
 npm package. Bumped `vitest` (2.1.9 -> 4.x) and its transitive `vite`/
