@@ -6,6 +6,16 @@ both distributions -- the npm package (`skillguard-cli`, JS/TS) and the
 PyPI package (`skillguard-cli`, Python) -- since they ship the same rule
 packs and scan semantics; entries note which distribution they apply to.
 
+## [0.2.4] - 2026-08-08 (npm)
+
+Bug fix. `src/cli.ts` hardcoded `.version('0.2.0')` in the commander setup,
+drifted from the real `package.json` version -- the published npm package
+was 0.2.3, but `skillguard-cli --version` still reported 0.2.0. The version
+is now read live from `package.json` at runtime (`require('../package.json')`),
+the same fix already applied to the PyPI distribution in 0.2.3 below (that
+entry's claim that the npm CLI already did this was itself wrong -- both
+distributions had independently drifted).
+
 ## [0.2.3] - 2026-08-08 (PyPI)
 
 Bug fix. Both `skillguard/__init__.py`'s `__version__` and `skillguard/cli.py`'s
