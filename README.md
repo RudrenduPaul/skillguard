@@ -2,21 +2,19 @@
 
 # SkillGuard
 
-Scans third-party AI agent-skill files (`SKILL.md` manifests, hooks, and bundled scripts) for known attack patterns before they run, and is the only scanner in its category you can also call as an MCP tool from inside another agent.
-
 [![CI](https://github.com/RudrenduPaul/skillguard/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/skillguard/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/skillguard-cli.svg)](https://www.npmjs.com/package/skillguard-cli)
 [![PyPI version](https://img.shields.io/pypi/v/skillguard-cli.svg)](https://pypi.org/project/skillguard-cli/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 [![Tests](https://img.shields.io/badge/tests-157%20TS%20%2B%20110%20Python%20passing-brightgreen.svg)](./CHANGELOG.md)
 
+[Install](#install) • [Try it now](#try-it-now) • [Features](#features) • [MCP server](#mcp-server-agent-native-tool-call) • [How it compares](#how-skillguard-compares) • [FAQ](#faq)
+
+Scans third-party AI agent-skill files (`SKILL.md` manifests, hooks, and bundled scripts) for known attack patterns before they run, and is the only scanner in its category you can also call as an MCP tool from inside another agent.
+
 </div>
 
 ![Terminal recording of installing skillguard-cli with npm and running its first scan against examples/known-bad-skill, reporting 11 findings](./docs/demo.gif)
-
-## Why this exists
-
-Third-party agent skills run with real tool, file, and network permissions the moment they're installed, and almost nothing checks them first. [Snyk's ToxicSkills study](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/) scanned 3,984 publicly listed skills in February 2026 and found security flaws in 36% of them, including 76 skills carrying confirmed malicious payloads: credential theft, reverse shells, data exfiltration. Most marketplaces and agent frameworks have no scan step between "someone published a skill" and "a user's agent runs it." SkillGuard is that step: a CLI, a library, an MCP server, and a GitHub Action, all reading the same ten bundled rule packs.
 
 ## Install
 
@@ -36,7 +34,10 @@ Neither install fetches anything at scan time: all ten rule packs and the patter
 npx skillguard-cli scan ./examples/known-bad-skill
 ```
 
-This runs against a fixture bundled with the repo, safe, non-functional, and deliberately pattern-matchable, and returns 11 real findings with file:line citations in about 0.15 seconds. Every scan prints "Loading SkillGuard rule packs..." to stderr first; that's expected, not a hang.
+This runs against a fixture bundled with the repo, safe, non-functional, and deliberately pattern-matchable, and returns 11 real findings with file:line citations in about 0.15 seconds.
+
+> [!NOTE]
+> Every scan prints `Loading SkillGuard rule packs...` to stderr first. That's expected startup output, not a hang.
 
 Compare it against a clean fixture:
 
@@ -46,25 +47,9 @@ npx skillguard-cli scan ./examples/clean-skill
 
 which returns zero findings and exit code 0.
 
-## Table of contents
+## Why this exists
 
-- [Why this exists](#why-this-exists)
-- [Install](#install)
-- [Try it now](#try-it-now)
-- [Features](#features)
-- [Quickstart](#quickstart)
-- [Commands](#commands)
-- [API reference](#api-reference)
-- [MCP server](#mcp-server-agent-native-tool-call)
-- [GitHub Action](#github-action)
-- [Rule packs](#rule-packs)
-- [How SkillGuard compares](#how-skillguard-compares)
-- [What is SkillGuard, and why does it exist](#what-is-skillguard-and-why-does-it-exist)
-- [Suppressing findings](#suppressing-findings)
-- [Known limitations](#known-limitations)
-- [Development](#development)
-- [FAQ](#faq)
-- [License](#license)
+Third-party agent skills run with real tool, file, and network permissions the moment they're installed, and almost nothing checks them first. [Snyk's ToxicSkills study](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/) scanned 3,984 publicly listed skills in February 2026 and found security flaws in 36% of them, including 76 skills carrying confirmed malicious payloads: credential theft, reverse shells, data exfiltration. Most marketplaces and agent frameworks have no scan step between "someone published a skill" and "a user's agent runs it." SkillGuard is that step: a CLI, a library, an MCP server, and a GitHub Action, all reading the same ten bundled rule packs.
 
 ## Features
 
@@ -224,7 +209,8 @@ SkillGuard is a static-analysis scanner for third-party AI agent-skill files, `S
 
 ## Suppressing findings
 
-**Trust model:** SkillGuard's job is to vet directories you did *not* write. Both suppression mechanisms below can silence a finding, so neither is ever trusted automatically from inside the thing being scanned. Each requires an explicit, deliberate opt-in from whoever runs the scan.
+> [!WARNING]
+> SkillGuard's job is to vet directories you did *not* write. Both suppression mechanisms below can silence a finding, so neither is ever trusted automatically from inside the thing being scanned. Each requires an explicit, deliberate opt-in from whoever runs the scan.
 
 A `.skillguardignore` file suppresses whole files by glob, same mental model as `.gitignore`:
 

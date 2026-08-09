@@ -8,7 +8,11 @@
     "cli",
     "agent-skills",
     "sarif",
-    "ci"
+    "ci",
+    "mcp",
+    "prompt-injection",
+    "llm-security",
+    "supply-chain-security"
   ],
   "license": "Apache-2.0",
   "author": "Rudrendu Paul",
