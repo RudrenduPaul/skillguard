@@ -3,6 +3,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { runCli } from './cli';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { version: PACKAGE_VERSION } = require('../package.json') as { version: string };
 
 function makeTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'skillguard-cli-'));
@@ -41,6 +43,13 @@ describe('cli', () => {
     stdoutSpy.mockRestore();
     stderrSpy.mockRestore();
     exitSpy.mockRestore();
+  });
+
+  it('reports the real package.json version, not a hand-maintained literal (regression: --version was hardcoded to a stale "0.2.0" while the package had shipped 0.2.3)', async () => {
+    await expect(runCli(['node', 'skillguard-cli', '--version'])).rejects.toThrow(
+      'process.exit(0)',
+    );
+    expect(stdout).toContain(PACKAGE_VERSION);
   });
 
   it('exits 2 when the target path does not exist', async () => {
