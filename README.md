@@ -1,3 +1,6 @@
+<!-- mcp-name: io.github.RudrenduPaul/skillguard -->
+<!-- Ownership-proof string for registry.modelcontextprotocol.io publishing. Do not remove. -->
+
 <div align="center">
 
 # SkillGuard
@@ -148,7 +151,18 @@ Starts SkillGuard as a stdio MCP server exposing one tool, `scan_skill` (`{ path
 { "mcpServers": { "skillguard": { "command": "npx", "args": ["skillguard-cli", "mcp"] } } }
 ```
 
-Full setup, the tool's input/output schema, and the security guarantees this path preserves (same `.skillguardignore`/inline-suppression defaults as the CLI, no way to pass an ignore path through the tool) are in [docs/integrations/mcp.md](./docs/integrations/mcp.md). The Python package ships the identical tool via `skillguard mcp` (requires the optional `mcp` extra, `pip install "skillguard-cli[mcp]"`, Python >=3.10).
+Full setup, the tool's input/output schema, and the security guarantees this path preserves (same `.skillguardignore`/inline-suppression defaults as the CLI, no way to pass an ignore path through the tool) are in [docs/integrations/mcp.md](./docs/integrations/mcp.md). The Python package ships the identical tool via `skillguard mcp` (requires the optional `mcp` extra, `pip install "skillguard-cli[mcp]"`, Python >=3.10): native and in-process, calling `scan_skill()` directly, no subprocess and no stdout/JSON parsing surface. `uvx` can run it without a manual install step, which is the recommended way to wire it into Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "skillguard": {
+      "command": "uvx",
+      "args": ["--from", "skillguard-cli", "skillguard", "mcp"]
+    }
+  }
+}
+```
 
 ## GitHub Action
 

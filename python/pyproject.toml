@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "skillguard-cli"
-version = "0.2.3"
+version = "0.2.4"
 description = "Security scanner for third-party AI agent-skill files: SKILL.md manifests, hooks, and bundled scripts."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -58,6 +58,10 @@ Documentation = "https://github.com/RudrenduPaul/skillguard/blob/main/docs/getti
 
 [project.scripts]
 skillguard = "skillguard.cli:main"
+# Subprocess-based MCP server wrapping the Node CLI (see
+# skillguard/node_mcp_server.py's module docstring). Separate from
+# `skillguard mcp` (native, no subprocess) -- both share the `mcp` extra.
+skillguard-node-mcp = "skillguard.node_mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/skillguard"]
