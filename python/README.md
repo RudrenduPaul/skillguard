@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.RudrenduPaul/skillguard -->
+
 # skillguard-cli (Python)
 
 Security scanner for third-party AI agent-skill files -- `SKILL.md`

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.RudrenduPaul/skillguard",
+  "description": "Security scanner for third-party AI agent-skill files (SKILL.md, hooks, scripts) via MCP.",
+  "repository": {
+    "url": "https://github.com/RudrenduPaul/skillguard",
+    "source": "github"
+  },
+  "version": "0.2.5",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "skillguard-cli",
+      "version": "0.2.5",
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--from",
+          "value": "skillguard-cli"
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "valueHint": "script_name",
+          "value": "skillguard"
+        },
+        {
+          "type": "positional",
+          "valueHint": "subcommand",
+          "value": "mcp"
+        }
+      ],
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
