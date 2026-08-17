@@ -1,8 +1,9 @@
+<!-- mcp-name: io.github.RudrenduPaul/skillguard -->
+<!-- Ownership-proof string for registry.modelcontextprotocol.io publishing. Do not remove. -->
+
 <div align="center">
 
 # SkillGuard
-
-Scans third-party AI agent-skill files (`SKILL.md` manifests, hooks, and bundled scripts) for known attack patterns before they run, and is the only scanner in its category you can also call as an MCP tool from inside another agent.
 
 [![CI](https://github.com/RudrenduPaul/skillguard/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/skillguard/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/skillguard-cli.svg)](https://www.npmjs.com/package/skillguard-cli)
@@ -10,13 +11,13 @@ Scans third-party AI agent-skill files (`SKILL.md` manifests, hooks, and bundled
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 [![Tests](https://img.shields.io/badge/tests-157%20TS%20%2B%20110%20Python%20passing-brightgreen.svg)](./CHANGELOG.md)
 
+[Install](#install) • [Try it now](#try-it-now) • [Features](#features) • [MCP server](#mcp-server-agent-native-tool-call) • [How it compares](#how-skillguard-compares) • [FAQ](#faq)
+
+Scans third-party AI agent-skill files (`SKILL.md` manifests, hooks, and bundled scripts) for known attack patterns before they run, and is the only scanner in its category you can also call as an MCP tool from inside another agent.
+
 </div>
 
 ![Terminal recording of installing skillguard-cli with npm and running its first scan against examples/known-bad-skill, reporting 11 findings](./docs/demo.gif)
-
-## Why this exists
-
-Third-party agent skills run with real tool, file, and network permissions the moment they're installed, and almost nothing checks them first. [Snyk's ToxicSkills study](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/) scanned 3,984 publicly listed skills in February 2026 and found security flaws in 36% of them, including 76 skills carrying confirmed malicious payloads: credential theft, reverse shells, data exfiltration. Most marketplaces and agent frameworks have no scan step between "someone published a skill" and "a user's agent runs it." SkillGuard is that step: a CLI, a library, an MCP server, and a GitHub Action, all reading the same ten bundled rule packs.
 
 ## Install
 
@@ -36,7 +37,10 @@ Neither install fetches anything at scan time: all ten rule packs and the patter
 npx skillguard-cli scan ./examples/known-bad-skill
 ```
 
-This runs against a fixture bundled with the repo, safe, non-functional, and deliberately pattern-matchable, and returns 11 real findings with file:line citations in about 0.15 seconds. Every scan prints "Loading SkillGuard rule packs..." to stderr first; that's expected, not a hang.
+This runs against a fixture bundled with the repo, safe, non-functional, and deliberately pattern-matchable, and returns 11 real findings with file:line citations in about 0.15 seconds.
+
+> [!NOTE]
+> Every scan prints `Loading SkillGuard rule packs...` to stderr first. That's expected startup output, not a hang.
 
 Compare it against a clean fixture:
 
@@ -46,25 +50,9 @@ npx skillguard-cli scan ./examples/clean-skill
 
 which returns zero findings and exit code 0.
 
-## Table of contents
+## Why this exists
 
-- [Why this exists](#why-this-exists)
-- [Install](#install)
-- [Try it now](#try-it-now)
-- [Features](#features)
-- [Quickstart](#quickstart)
-- [Commands](#commands)
-- [API reference](#api-reference)
-- [MCP server](#mcp-server-agent-native-tool-call)
-- [GitHub Action](#github-action)
-- [Rule packs](#rule-packs)
-- [How SkillGuard compares](#how-skillguard-compares)
-- [What is SkillGuard, and why does it exist](#what-is-skillguard-and-why-does-it-exist)
-- [Suppressing findings](#suppressing-findings)
-- [Known limitations](#known-limitations)
-- [Development](#development)
-- [FAQ](#faq)
-- [License](#license)
+Third-party agent skills run with real tool, file, and network permissions the moment they're installed, and almost nothing checks them first. [Snyk's ToxicSkills study](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/) scanned 3,984 publicly listed skills in February 2026 and found security flaws in 36% of them, including 76 skills carrying confirmed malicious payloads: credential theft, reverse shells, data exfiltration. Most marketplaces and agent frameworks have no scan step between "someone published a skill" and "a user's agent runs it." SkillGuard is that step: a CLI, a library, an MCP server, and a GitHub Action, all reading the same ten bundled rule packs.
 
 ## Features
 
@@ -80,6 +68,8 @@ which returns zero findings and exit code 0.
 ```bash
 npx skillguard-cli scan ./my-skill --format json --severity-threshold MEDIUM
 ```
+
+![Terminal recording of npx skillguard-cli scan run with --format json, showing the structured JSON findings output a script or agent can parse directly](./docs/json-output.gif)
 
 ```ts
 import { scanSkill } from 'skillguard-cli';
@@ -161,7 +151,18 @@ Starts SkillGuard as a stdio MCP server exposing one tool, `scan_skill` (`{ path
 { "mcpServers": { "skillguard": { "command": "npx", "args": ["skillguard-cli", "mcp"] } } }
 ```
 
-Full setup, the tool's input/output schema, and the security guarantees this path preserves (same `.skillguardignore`/inline-suppression defaults as the CLI, no way to pass an ignore path through the tool) are in [docs/integrations/mcp.md](./docs/integrations/mcp.md). The Python package ships the identical tool via `skillguard mcp` (requires the optional `mcp` extra, `pip install "skillguard-cli[mcp]"`, Python >=3.10).
+Full setup, the tool's input/output schema, and the security guarantees this path preserves (same `.skillguardignore`/inline-suppression defaults as the CLI, no way to pass an ignore path through the tool) are in [docs/integrations/mcp.md](./docs/integrations/mcp.md). The Python package ships the identical tool via `skillguard mcp` (requires the optional `mcp` extra, `pip install "skillguard-cli[mcp]"`, Python >=3.10): native and in-process, calling `scan_skill()` directly, no subprocess and no stdout/JSON parsing surface. `uvx` can run it without a manual install step, which is the recommended way to wire it into Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "skillguard": {
+      "command": "uvx",
+      "args": ["--from", "skillguard-cli", "skillguard", "mcp"]
+    }
+  }
+}
+```
 
 ## GitHub Action
 
@@ -207,14 +208,14 @@ SkillGuard is purpose-built for the agent-skill threat model, frontmatter-declar
 | Auth required for a basic scan | None (`npx skillguard-cli scan <path>`) | Yes, requires a Snyk account and `SNYK_TOKEN` | None for Community Edition local scans | Yes, `SOCKET_CLI_API_TOKEN` needed for full functionality |
 | Runtime | Node.js, zero external binary (Python port also available) | Python via `uvx` | Own binary (Python-based CLI) | Node.js |
 | License | Apache 2.0 | Apache 2.0 | LGPL-2.1 | MIT (per the [`socket` npm package listing](https://www.npmjs.com/package/socket); the repo itself carries no LICENSE file) |
-| GitHub stars (checked 2026-08-03) | 1 star, three weeks old, launched 2026-07-11 | 2,858 stars, 254 forks | 16,102 stars, 1,011 forks | 303 stars, 56 forks |
+| GitHub stars (checked 2026-08-10) | 1 star, about a month old, launched 2026-07-11 | 2,897 stars, 258 forks | 16,173 stars, 1,021 forks | 311 stars, 58 forks |
 
 A few honest notes, since a security tool's credibility depends on saying the unflattering parts out loud:
 
-- **Snyk Agent Scan is the closest real competitor**, more mature (2,858 stars vs. SkillGuard's 1) and covering more overall ground (15+ detection categories, plus MCP server config scanning, which SkillGuard does not do). The real differences are the auth story (SkillGuard needs zero signup or token) and cross-skill analysis (Snyk's own maintainers confirmed their tool is single-file today). If you already have a Snyk account and want MCP-server coverage too, Agent Scan covers more ground; if you want a zero-auth check that can also reason about a whole directory of skills at once, that's what SkillGuard is for.
+- **Snyk Agent Scan is the closest real competitor**, more mature (2,897 stars vs. SkillGuard's 1) and covering more overall ground (15+ detection categories, plus MCP server config scanning, which SkillGuard does not do). The real differences are the auth story (SkillGuard needs zero signup or token) and cross-skill analysis (Snyk's own maintainers confirmed their tool is single-file today). If you already have a Snyk account and want MCP-server coverage too, Agent Scan covers more ground; if you want a zero-auth check that can also reason about a whole directory of skills at once, that's what SkillGuard is for.
 - **SkillGuard does not wrap Semgrep.** It ships its own small, in-process pattern engine (Semgrep-inspired, not Semgrep) so the `npx` install never depends on a Python/PyPI toolchain. If you need true multi-language, general-purpose static analysis across 30+ languages, Semgrep is the more mature tool for that job.
 - **Socket CLI is an adjacent category, not a direct competitor.** It's built for typosquats and malicious install scripts across npm/PyPI packages, not a skill's own SKILL.md frontmatter and declared-versus-actual behavior.
-- **SkillGuard itself is genuinely early**: 1 GitHub star, three weeks since the first commit. That's a real "early but real" story, not something worth dressing up: every command and finding shown in this README was run against the actual current code while writing it, not carried over from an old draft.
+- **SkillGuard itself is genuinely early**: 1 GitHub star, about a month since the first commit. That's a real "early but real" story, not something worth dressing up: every command and finding shown in this README was run against the actual current code while writing it, not carried over from an old draft.
 
 ## What is SkillGuard, and why does it exist
 
@@ -222,7 +223,8 @@ SkillGuard is a static-analysis scanner for third-party AI agent-skill files, `S
 
 ## Suppressing findings
 
-**Trust model:** SkillGuard's job is to vet directories you did *not* write. Both suppression mechanisms below can silence a finding, so neither is ever trusted automatically from inside the thing being scanned. Each requires an explicit, deliberate opt-in from whoever runs the scan.
+> [!WARNING]
+> SkillGuard's job is to vet directories you did *not* write. Both suppression mechanisms below can silence a finding, so neither is ever trusted automatically from inside the thing being scanned. Each requires an explicit, deliberate opt-in from whoever runs the scan.
 
 A `.skillguardignore` file suppresses whole files by glob, same mental model as `.gitignore`:
 
@@ -288,7 +290,7 @@ Both are independent, equally maintained ports reading the same rule-pack contra
 No. Semgrep is a mature, general-purpose static-analysis engine across 30+ languages; Snyk covers dependency and code vulnerabilities broadly, and Snyk Agent Scan covers a wider set of agent-skill and MCP-config threats than SkillGuard does today. SkillGuard's job is narrower: the specific SKILL.md/hooks/frontmatter threat model, with zero auth and a cross-skill check neither of those tools currently ships.
 
 **Is SkillGuard production-ready?**
-It's early: about three weeks old, pre-1.0, 1 GitHub star as of this writing. The test suite (157/157 TypeScript, 110/110 Python) passes on a clean install and every command in this README was independently re-run against the current code, but it hasn't been run against a large real-world corpus yet, so treat its false-positive/false-negative rate as unproven at scale rather than settled.
+It's early: about a month old, pre-1.0, 1 GitHub star as of this writing. The test suite (157/157 TypeScript, 110/110 Python) passes on a clean install and every command in this README was independently re-run against the current code, but it hasn't been run against a large real-world corpus yet, so treat its false-positive/false-negative rate as unproven at scale rather than settled.
 
 **Can I use SkillGuard commercially, and does the license cost anything?**
 Yes, and no. SkillGuard is Apache License 2.0 (see [LICENSE](./LICENSE)), which permits commercial use, modification, and redistribution, including inside proprietary software, at no cost, provided you keep the copyright and license notice. Apache 2.0 also grants an explicit patent license from contributors, which plain MIT does not.

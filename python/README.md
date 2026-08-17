@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.RudrenduPaul/skillguard -->
+
 # skillguard-cli (Python)
 
 Security scanner for third-party AI agent-skill files -- `SKILL.md`
@@ -253,7 +255,7 @@ scan targets -- neither this package nor the npm package ever `eval()`s,
 is only ever read and pattern-matched. Both suppression mechanisms
 (`.skillguardignore`, inline `# skillguard-ignore:` comments) are off by
 default and require an explicit opt-in, closing a real trust-boundary bug
-fixed before v0.1 shipped (see
+fixed early in development (see
 [CHANGELOG.md](https://github.com/RudrenduPaul/skillguard/blob/main/CHANGELOG.md)).
 To report a vulnerability, see
 [SECURITY.md](https://github.com/RudrenduPaul/skillguard/blob/main/SECURITY.md)

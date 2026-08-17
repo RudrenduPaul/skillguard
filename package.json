@@ -1,16 +1,18 @@
 {
   "name": "skillguard-cli",
-  "version": "0.2.3",
-  "description": "Security scanner for third-party AI agent-skill files (SKILL.md manifests, hooks, and bundled scripts): CLI, library, and MCP server reading the same 10 rule packs, zero auth, zero config npx scan.",
+  "version": "0.2.4",
+  "description": "Security scanner for third-party AI agent-skill files: SKILL.md manifests, hooks, and bundled scripts.",
   "keywords": [
     "security",
     "static-analysis",
     "cli",
     "agent-skills",
     "sarif",
+    "ci",
     "mcp",
     "prompt-injection",
     "supply-chain",
+    "supply-chain-security",
     "sast",
     "llm-security",
     "ai-agents",
@@ -62,7 +64,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "commander": "12.1.0",
     "minimatch": "9.0.9",
     "yaml": "2.9.0",
