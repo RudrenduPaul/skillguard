@@ -11,8 +11,12 @@
     "ci",
     "mcp",
     "prompt-injection",
+    "supply-chain",
+    "supply-chain-security",
+    "sast",
     "llm-security",
-    "supply-chain-security"
+    "ai-agents",
+    "github-action"
   ],
   "license": "Apache-2.0",
   "author": "Rudrendu Paul",

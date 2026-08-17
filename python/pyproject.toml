@@ -13,7 +13,7 @@ authors = [
   { name = "Rudrendu Paul" },
   { name = "Sourav Nandy" },
 ]
-keywords = ["security", "ai-agents", "skill-scanner", "sast", "supply-chain", "static-analysis", "cli", "sarif"]
+keywords = ["security", "ai-agents", "agent-skills", "skill-scanner", "sast", "supply-chain", "static-analysis", "cli", "sarif", "mcp", "prompt-injection", "llm-security"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
