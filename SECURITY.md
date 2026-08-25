@@ -12,11 +12,11 @@ handled as a priority.
 
 | Package | Version | Supported |
 | --- | --- | --- |
-| `skillguard-cli` (npm) | 0.1.x | Yes |
-| `skillguard-cli` (PyPI) | 0.1.x | Yes |
+| `skillguard-cli` (npm) | 0.2.x | Yes |
+| `skillguard-cli` (PyPI) | 0.2.x | Yes |
 
 Both distributions are pre-1.0 and under active development. Security fixes
-land on the latest `0.1.x` release of each; there is no older supported line
+land on the latest `0.2.x` release of each; there is no older supported line
 to backport to yet.
 
 ## Reporting a vulnerability
