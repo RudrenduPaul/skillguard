@@ -20,7 +20,7 @@ export const PackManifestSchema = z
     category: z.enum(
       ['SG01', 'SG02', 'SG03', 'SG04', 'SG05', 'SG06', 'SG07', 'SG08', 'SG09', 'SG10'],
       {
-        errorMap: () => ({ message: 'category must be one of SG01..SG10' }),
+        error: 'category must be one of SG01..SG10',
       }
     ),
     minCoreVersion: z.string().regex(SEMVER_RE, 'minCoreVersion must be semver, e.g. "0.1.0"'),
