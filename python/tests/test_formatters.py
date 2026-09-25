@@ -1,6 +1,12 @@
 import json
 
-from skillguard.output.formatters import format_human, format_json, format_sarif, to_json_output
+from skillguard.output.formatters import (
+    format_human,
+    format_json,
+    format_sarif,
+    sanitize_for_terminal,
+    to_json_output,
+)
 from skillguard.types import Finding, ScanResult, ScanWarning
 
 SAMPLE_RESULT = ScanResult(
@@ -138,3 +144,13 @@ def test_human_format_strips_control_characters_terminal_injection():
     assert "\r" not in text
     lines = text.split("\n")
     assert [l for l in lines if l.strip() == "No findings."] == []
+
+
+def test_sanitize_for_terminal_replaces_control_chars_but_keeps_tab_and_printables():
+    replacement = "\ufffd"
+    assert sanitize_for_terminal("a\tb") == "a\tb"
+    assert sanitize_for_terminal("plain text 123 ~") == "plain text 123 ~"
+    assert sanitize_for_terminal("\x00\x08") == replacement * 2
+    assert sanitize_for_terminal("\n\r\x1b\x1f") == replacement * 4
+    assert sanitize_for_terminal("\x7f") == replacement
+    assert sanitize_for_terminal(" ") == " "

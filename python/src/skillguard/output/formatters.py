@@ -14,7 +14,6 @@ literally identical to that schema by construction (see to_json_output()).
 from __future__ import annotations
 
 import json
-import re
 from typing import List
 
 from ..types import Finding, ScanResult, ScanWarning, Severity, SkillSetScanResult
@@ -42,11 +41,18 @@ def _summarize(findings: List[Finding]) -> dict:
 # machine-readable formats or the exit code; it only protects a human
 # directly reading the default human-readable CLI output. Ported from the
 # same control in src/output/formatters.ts.
-_CONTROL_CHAR_RE = re.compile("[\x00-\x08\x0a-\x1f\x7f]")
+_TAB = 0x09
+_DEL = 0x7F
+_SPACE = 0x20
+
+
+def _is_control_char(ch: str) -> bool:
+    code = ord(ch)
+    return (code < _SPACE and code != _TAB) or code == _DEL
 
 
 def sanitize_for_terminal(value: str) -> str:
-    return _CONTROL_CHAR_RE.sub("�", value)
+    return "".join("\ufffd" if _is_control_char(ch) else ch for ch in value)
 
 
 def to_json_output(result: ScanResult) -> dict:
