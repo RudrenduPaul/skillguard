@@ -27,7 +27,17 @@ from the installed package's own metadata via
 same value instead of keeping its own copy, matching how the npm CLI already
 derives its version from `package.json` at runtime.
 
-## [Unreleased]
+## [0.3.0] - 2026-09-24 (npm)
+
+npm package. Runtime dependencies upgraded to current majors, all pinned
+exactly: `zod` 4.6.5, `commander` 14.0.3, `minimatch` 10.2.6,
+`@modelcontextprotocol/sdk` 1.30.1, `yaml` 2.9.1. Dev toolchain moved to
+TypeScript 7 and `vitest` 4. The minimum supported Node version is now 20
+(`engines.node` and the CI matrix); the earlier entry below explains why.
+Publishing moves to npm Trusted Publishing (GitHub Actions OIDC, no
+long-lived npm token). The PyPI distribution is unchanged in this release.
+
+Earlier unreleased changes now included in this release:
 
 npm package. Bumped `vitest` (2.1.9 -> 4.x) and its transitive `vite`/
 `esbuild`, resolving 5 open Dependabot alerts (1 critical: arbitrary file
